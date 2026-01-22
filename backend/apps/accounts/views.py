@@ -5,6 +5,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 from django.contrib.auth import get_user_model
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 
 User = get_user_model()
 
@@ -33,7 +35,7 @@ class RegisterView(generics.CreateAPIView):
             'message': 'User registered successfully'
         }, status=status.HTTP_201_CREATED)
 
-
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
 class LoginView(APIView):
     """API endpoint for user login"""
     
