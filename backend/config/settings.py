@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'apps.rides',
     'apps.favourites',
     'apps.core',
-    'django_ratelimit',
+   #'django_ratelimit',
 ]
 
 MIDDLEWARE = [

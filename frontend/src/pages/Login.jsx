@@ -1,3 +1,4 @@
+import logo from '../assets/ridecomparelogo.png';
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
@@ -29,9 +30,7 @@ export default function Login() {
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            ride<span className="italic">compare</span>
-          </h1>
+          <img src={logo} alt="ridecompare logo" className="h-8 mx-auto mb-2" />
           <p className="text-gray-400">Compare. Choose. Ride.</p>
         </div>
 
