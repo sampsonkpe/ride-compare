@@ -26,3 +26,8 @@
 .pac-item-query {
   color: rgba(255, 255, 255, 0.95) !important;
 }
+
+/* Dark-mode logo inversion for black logos */
+.logo-dark-invert {
+  filter: invert(1) brightness(2);
+}

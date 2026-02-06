@@ -17,7 +17,6 @@ export default function Compare() {
 
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-
   const pickupRef = useRef(null);
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export default function Compare() {
       return;
     }
 
-    // Prefer lat/lng when available (Places / current location)
     const pickupPayload =
       pickup.lat && pickup.lng
         ? { address: pickupAddress, lat: pickup.lat, lng: pickup.lng }
@@ -59,7 +57,6 @@ export default function Compare() {
     try {
       const data = await ridesService.compareRides(pickupPayload, dropoffPayload);
 
-      // Persist results for refresh-safe CompareResults
       try {
         localStorage.setItem(
           LAST_RESULTS_KEY,
@@ -71,7 +68,7 @@ export default function Compare() {
           })
         );
       } catch {
-        // ignore storage errors
+        // ignore
       }
 
       navigate("/compare/results", {
@@ -121,7 +118,6 @@ export default function Compare() {
 
   return (
     <div className="min-h-screen text-white bg-gradient-to-b from-black via-gray-950 to-black">
-      {/* Header */}
       <header className="border-b border-gray-800 p-4">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <button
@@ -130,7 +126,11 @@ export default function Compare() {
             aria-label="Go to compare"
             type="button"
           >
-            <img src={logo} alt="ridecompare logo" className="h-8" />
+            <img
+              src={logo}
+              alt="ridecompare logo"
+              className="h-8 logo-dark-invert"
+            />
           </button>
 
           <div className="flex items-center gap-4">
@@ -172,7 +172,6 @@ export default function Compare() {
         </div>
       </header>
 
-      {/* Main */}
       <main className="max-w-4xl mx-auto p-6">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4">Compare rides instantly</h2>
@@ -181,7 +180,6 @@ export default function Compare() {
           </p>
         </div>
 
-        {/* Search */}
         <div className="rounded-2xl p-6 border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -225,7 +223,6 @@ export default function Compare() {
           </button>
         </div>
 
-        {/* Recent Searches (auth only) */}
         {user && (
           <div className="mt-8">
             <div className="flex justify-between items-center mb-4">
