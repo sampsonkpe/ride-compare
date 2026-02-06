@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { AuthContext } from "../context/AuthContext";
 import logo from "../assets/ridecomparelogo.png";
@@ -72,6 +72,7 @@ function mapAuthError(err) {
 
 export default function Auth() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading, login, register } = useContext(AuthContext);
 
   const [isLogin, setIsLogin] = useState(true);
@@ -87,12 +88,23 @@ export default function Auth() {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Resolve where to go after auth
+  const nextPath = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const next = params.get("next");
+
+    // Only allow internal paths to prevent open redirects
+    if (next && next.startsWith("/")) return next;
+
+    return "/compare";
+  }, [location.search]);
+
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
-      navigate("/compare", { replace: true });
+      navigate(nextPath, { replace: true });
     }
-  }, [loading, user, navigate]);
+  }, [loading, user, navigate, nextPath]);
 
   const greeting = useMemo(() => {
     const arr = isLogin ? loginGreetings : signupGreetings;
@@ -151,7 +163,7 @@ export default function Auth() {
         });
       }
 
-      navigate("/compare", { replace: true });
+      navigate(nextPath, { replace: true });
     } catch (err) {
       setError(mapAuthError(err));
     } finally {
@@ -170,7 +182,7 @@ export default function Auth() {
       <header className="w-full py-4 px-4 md:py-6 border-b border-white/5">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button
-            onClick={() => navigate("/compare")}
+            onClick={() => navigate(nextPath)}
             className="p-2 -ml-2 rounded-full hover:bg-white/5 transition-colors"
             aria-label="Go back"
             type="button"
