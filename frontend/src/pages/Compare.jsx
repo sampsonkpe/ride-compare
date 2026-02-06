@@ -7,6 +7,8 @@ import logo from "../assets/ridecomparelogo.png";
 import LocationInput from "../components/rides/LocationInput";
 import { LogIn, LogOut, UserCog } from "lucide-react";
 
+const LAST_RESULTS_KEY = "ridecompare:last_results_v1";
+
 export default function Compare() {
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
   const [dropoff, setDropoff] = useState({ address: "", lat: null, lng: null });
@@ -57,9 +59,24 @@ export default function Compare() {
     try {
       const data = await ridesService.compareRides(pickupPayload, dropoffPayload);
 
+      // Persist results for refresh-safe CompareResults
+      try {
+        localStorage.setItem(
+          LAST_RESULTS_KEY,
+          JSON.stringify({
+            rides: data?.rides || [],
+            pickup: pickupPayload,
+            dropoff: dropoffPayload,
+            savedAt: Date.now(),
+          })
+        );
+      } catch {
+        // ignore storage errors
+      }
+
       navigate("/compare/results", {
         state: {
-          rides: data.rides,
+          rides: data?.rides || [],
           pickup: pickupPayload,
           dropoff: dropoffPayload,
         },
