@@ -1,32 +1,48 @@
-import { UserCog, LogOut } from "lucide-react";
 import { useContext } from "react";
-import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import { UserCog, MapPin, LogOut } from "lucide-react";
 
 export default function Profile() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  return (
-    <div className="min-h-screen bg-black text-white p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <UserCog className="w-6 h-6 text-blue-500" />
-        <h2 className="text-xl font-semibold">Profile</h2>
-      </div>
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth");
+  };
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <p className="text-gray-400 mb-2">Email</p>
-        <p className="text-white mb-6">{user?.email}</p>
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white p-6">
+      <div className="max-w-xl mx-auto space-y-6">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <UserCog className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Profile</h2>
+          </div>
+
+          <p className="text-gray-300">{user?.email}</p>
+        </div>
 
         <button
-          onClick={async () => {
-            await logout();
-            navigate("/auth");
-          }}
-          className="flex items-center gap-2 text-red-400 hover:text-red-300"
+          onClick={() => navigate("/favourites")}
+          className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-5 flex items-center justify-between"
+          type="button"
         >
-          <LogOut className="w-4 h-4" />
-          Sign out
+          <div className="flex items-center gap-3">
+            <MapPin className="h-5 w-5 text-gray-300" />
+            <span className="font-semibold">Favourites</span>
+          </div>
+          <span className="text-gray-400">→</span>
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400"
+          type="button"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
         </button>
       </div>
     </div>

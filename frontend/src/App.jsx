@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, RouterContextProvider } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { useContext } from "react";
@@ -9,6 +9,7 @@ import Compare from "./pages/Compare";
 import CompareResults from "./pages/CompareResults";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Favourites from "./pages/Favourites";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
@@ -49,6 +50,15 @@ export default function App() {
               <ProtectedRoute>
                 <Profile />
               </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/favourites"
+            element={
+              <ProtectedRoute>
+                <Favourites />
+                </ProtectedRoute>
             }
           />
 
