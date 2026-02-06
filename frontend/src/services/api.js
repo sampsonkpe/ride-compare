@@ -1,3 +1,4 @@
+// src/services/api.js
 import axios from "axios";
 
 const ACCESS_KEY = "ridecompare_access_token";
@@ -25,8 +26,11 @@ export const setTokens = (access, refresh) => {
     delete api.defaults.headers.common.Authorization;
   }
 
-  if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
-  else localStorage.removeItem(REFRESH_KEY);
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_KEY, refreshToken);
+  } else {
+    localStorage.removeItem(REFRESH_KEY);
+  }
 };
 
 export const loadTokens = () => {
@@ -51,26 +55,47 @@ export const clearTokens = () => {
   delete api.defaults.headers.common.Authorization;
 };
 
-// Restore tokens when app loads
+// Restore tokens immediately on app load
 loadTokens();
 
+// Attach token on every request (safety net)
 api.interceptors.request.use(
   (config) => {
-    if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
+// Decide which endpoints REQUIRE auth
+const isProtectedEndpoint = (url = "") => {
+  const path = String(url);
+  return (
+    path.includes("/auth/user/") ||
+    path.includes("/rides/history") ||
+    path.includes("/favourites") ||
+    path.includes("/alerts")
+  );
+};
+
+// Handle auth failures
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || "";
+
+    if (status === 401) {
       clearTokens();
-      if (window.location.pathname !== "/auth") {
+
+      // Only force redirect for protected resources
+      if (isProtectedEndpoint(requestUrl) && window.location.pathname !== "/auth") {
         window.location.href = "/auth";
       }
     }
+
     return Promise.reject(error);
   }
 );
