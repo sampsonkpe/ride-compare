@@ -16,7 +16,7 @@ export default function RequireAuth({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-gray-300">Loading…</div>
       </div>
     );

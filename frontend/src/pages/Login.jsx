@@ -27,15 +27,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src={logo} alt="ridecompare logo" className="h-8 mx-auto mb-2" />
           <p className="text-gray-400">Compare. Choose. Ride.</p>
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-8 border border-gray-800">
-          <h2 className="text-2xl font-bold text-white mb-6">Login</h2>
+        <div className="bg-gray-900 rounded-lg p-8 border border-border-800">
+          <h2 className="text-2xl font-bold text-foreground mb-6">Login</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -46,7 +46,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 bg-gray-800 border border-border-700 rounded-lg text-foreground focus:outline-none focus:border-blue-500"
                 placeholder="your@email.com"
                 required
               />
@@ -60,7 +60,7 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 bg-gray-800 border border-border-700 rounded-lg text-foreground focus:outline-none focus:border-blue-500"
                 placeholder="••••••••"
                 required
               />
@@ -69,7 +69,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-foreground font-semibold rounded-lg transition disabled:opacity-50"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>

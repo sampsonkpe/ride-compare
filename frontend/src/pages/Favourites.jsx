@@ -297,21 +297,21 @@ export default function Favourites() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <p className="text-gray-400">Loading favourites…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white p-6">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-foreground p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate("/profile")}
-              className="text-gray-300 hover:text-white"
+              className="text-gray-300 hover:text-foreground"
             >
               ←
             </button>
@@ -345,7 +345,7 @@ export default function Favourites() {
               return (
                 <div
                   key={fav.id}
-                  className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex flex-col gap-4"
+                  className="bg-white/5 backdrop-blur-xl border border-border/10 rounded-2xl p-5 flex flex-col gap-4"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-center gap-3 min-w-0">
@@ -361,7 +361,7 @@ export default function Favourites() {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => openEditModal(fav)}
-                        className="text-gray-300 hover:text-white"
+                        className="text-gray-300 hover:text-foreground"
                         type="button"
                         aria-label="Edit favourite"
                         title="Edit"
@@ -384,14 +384,14 @@ export default function Favourites() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => useAsPickup(fav)}
-                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-foreground font-semibold"
                       type="button"
                     >
                       Use as pickup
                     </button>
                     <button
                       onClick={() => useAsDropoff(fav)}
-                      className="flex-1 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold"
+                      className="flex-1 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-border/10 text-gray-200 font-semibold"
                       type="button"
                     >
                       Use as dropoff
@@ -411,7 +411,7 @@ export default function Favourites() {
           aria-modal="true"
         >
           <button
-            className="absolute inset-0 bg-black/70"
+            className="absolute inset-0 bg-background/70"
             onClick={closeModal}
             type="button"
             aria-label="Close modal overlay"
@@ -419,7 +419,7 @@ export default function Favourites() {
 
           {/* CHANGED: div -> form to prevent bubbling/submits hitting Compare */}
           <form
-            className="relative w-full max-w-xl rounded-2xl border border-white/10 bg-gray-950/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.7)]"
+            className="relative w-full max-w-xl rounded-2xl border border-border/10 bg-gray-950/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.7)]"
             onSubmit={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -428,13 +428,13 @@ export default function Favourites() {
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/10">
               <h3 className="text-lg font-semibold">
                 {mode === "edit" ? "Edit favourite" : "Add favourite"}
               </h3>
               <button
                 onClick={closeModal}
-                className="text-gray-300 hover:text-white"
+                className="text-gray-300 hover:text-foreground"
                 type="button"
                 aria-label="Close"
                 disabled={saving}
@@ -462,8 +462,8 @@ export default function Favourites() {
                         onClick={() => setType(item.key)}
                         className={`rounded-xl border px-3 py-3 inline-flex items-center justify-center gap-2 text-sm font-semibold transition ${
                           active
-                            ? "border-blue-500 bg-blue-600/20 text-white"
-                            : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                            ? "border-blue-500 bg-blue-600/20 text-foreground"
+                            : "border-border/10 bg-white/5 text-gray-300 hover:bg-white/10"
                         }`}
                         disabled={saving}
                       >
@@ -483,7 +483,7 @@ export default function Favourites() {
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={defaultLabelForType || "e.g. Gym"}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-500 outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border/10 bg-white/5 px-4 py-3 text-foreground placeholder:text-gray-500 outline-none focus:border-blue-500"
                   disabled={saving}
                 />
                 <p className="mt-2 text-xs text-gray-500">
@@ -506,10 +506,10 @@ export default function Favourites() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border/10">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold"
+                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-border/10 text-gray-200 font-semibold"
                 type="button"
                 disabled={saving}
               >
@@ -518,7 +518,7 @@ export default function Favourites() {
 
               {/* CHANGED: type submit so Enter works, still isolated */}
               <button
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-foreground font-semibold disabled:opacity-60"
                 type="submit"
                 disabled={saving}
               >

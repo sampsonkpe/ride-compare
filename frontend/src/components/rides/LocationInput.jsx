@@ -314,8 +314,8 @@ export default function LocationInput({
       )}
 
       <div
-        className={`relative flex items-center rounded-lg border bg-black/40 transition ${
-          isFocused ? "border-blue-600" : "border-white/10 hover:border-white/20"
+        className={`relative flex items-center rounded-lg border bg-background/40 transition ${
+          isFocused ? "border-blue-600" : "border-border/10 hover:border-border/20"
         }`}
       >
         <div className="pl-4 pr-2">{pickIcon}</div>
@@ -341,7 +341,7 @@ export default function LocationInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 px-2 py-4 bg-transparent text-white placeholder-gray-500 focus:outline-none"
+          className="flex-1 px-2 py-4 bg-transparent text-foreground placeholder:text-muted-foreground-500 focus:outline-none"
           type="text"
         />
 
@@ -349,7 +349,7 @@ export default function LocationInput({
           <button
             type="button"
             onClick={clearValue}
-            className="px-3 text-gray-300 hover:text-white"
+            className="px-3 text-gray-300 hover:text-foreground"
             aria-label="Clear"
           >
             <X className="w-4 h-4" />
@@ -358,7 +358,7 @@ export default function LocationInput({
       </div>
 
       {showSuggestions && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-gray-950 border border-white/10 rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+        <div className="absolute z-50 w-full mt-2 bg-gray-950 border border-border/10 rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
           {predictions.slice(0, 5).map((p, idx) => (
             <button
               key={p.place_id}
@@ -369,7 +369,7 @@ export default function LocationInput({
                 selectedIndex === idx ? "bg-white/10" : "hover:bg-white/5"
               }`}
             >
-              <div className="text-white truncate">
+              <div className="text-foreground truncate">
                 {p.structured_formatting?.main_text || p.description}
               </div>
               <div className="text-gray-400 text-xs truncate">

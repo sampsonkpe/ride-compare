@@ -13,9 +13,9 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white p-6">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-foreground p-6">
       <div className="max-w-xl mx-auto space-y-6">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+        <div className="bg-white/5 backdrop-blur-xl border border-border/10 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <UserCog className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Profile</h2>
@@ -26,7 +26,7 @@ export default function Profile() {
 
         <button
           onClick={() => navigate("/favourites")}
-          className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-5 flex items-center justify-between"
+          className="w-full bg-white/5 hover:bg-white/10 border border-border/10 rounded-2xl p-5 flex items-center justify-between"
           type="button"
         >
           <div className="flex items-center gap-3">

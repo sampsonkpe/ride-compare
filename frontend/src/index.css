@@ -1,6 +1,72 @@
 @import "tailwindcss";
 
-/* Optional: Google Places dropdown styling */
+/* ================================
+   Design Tokens (RideCompare)
+   ================================ */
+
+/* Light theme (default) */
+:root {
+  /* Core surfaces */
+  --background: 0 0% 98%;        /* #FAFAFA */
+  --foreground: 220 20% 15%;     /* #1F2937 */
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 20% 15%;
+
+  /* Brand */
+  --primary: 215 50% 25%;        /* #214268 */
+  --primary-foreground: 0 0% 100%;
+
+  /* UI layers */
+  --secondary: 0 0% 96%;         /* #F5F5F5 */
+  --muted: 0 0% 96%;
+  --muted-foreground: 220 10% 50%; /* #737B8B */
+
+  --accent: 215 40% 95%;         /* #EDF2F7 */
+
+  /* Borders & inputs */
+  --border: 0 0% 90%;            /* #E6E6E6 */
+  --input: 0 0% 90%;
+
+  /* Status */
+  --destructive: 0 72% 51%;      /* #E53935 */
+  --destructive-foreground: 0 0% 100%;
+}
+
+/* Dark theme */
+.dark {
+  --background: 220 15% 8%;      /* #121418 */
+  --foreground: 0 0% 95%;        /* #F2F2F2 */
+
+  --card: 220 15% 12%;           /* #1A1D23 */
+  --card-foreground: 0 0% 95%;
+
+  --primary: 215 60% 50%;        /* #3B82C4 */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 15% 18%;      /* #272B35 */
+  --muted: 220 15% 16%;          /* #232730 */
+  --muted-foreground: 220 10% 65%;
+
+  --border: 220 15% 20%;         /* #2D323D */
+  --input: 220 15% 20%;
+}
+
+/* ================================
+   Base application styles
+   ================================ */
+
+html,
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* ================================
+   Google Places Autocomplete
+   (Dark-mode biased on purpose)
+   ================================ */
+
 .pac-container {
   background: rgba(17, 24, 39, 0.95) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -27,7 +93,12 @@
   color: rgba(255, 255, 255, 0.95) !important;
 }
 
-/* Dark-mode logo inversion for black logos */
+/* ================================
+   Utility helpers
+   ================================ */
+
+/* Temporary logo inversion helper (acceptable for now)
+   Long-term: prefer explicit light/dark logo assets */
 .logo-dark-invert {
   filter: invert(1) brightness(2);
 }

@@ -232,8 +232,8 @@ export default function Compare() {
   };
 
   return (
-    <div className="min-h-screen text-white bg-gradient-to-b from-black via-gray-950 to-black">
-      <header className="border-b border-gray-800 p-4">
+    <div className="min-h-screen text-foreground bg-gradient-to-b from-black via-gray-950 to-black">
+      <header className="border-b border-border-800 p-4">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <button
             onClick={() => navigate("/compare")}
@@ -251,7 +251,7 @@ export default function Compare() {
 
                 <button
                   onClick={() => navigate("/profile")}
-                  className="text-gray-400 hover:text-white text-sm inline-flex items-center gap-2"
+                  className="text-gray-400 hover:text-foreground text-sm inline-flex items-center gap-2"
                   type="button"
                   aria-label="Profile"
                   title="Profile"
@@ -262,7 +262,7 @@ export default function Compare() {
 
                 <button
                   onClick={handleLogout}
-                  className="text-gray-400 hover:text-white text-sm inline-flex items-center gap-2"
+                  className="text-gray-400 hover:text-foreground text-sm inline-flex items-center gap-2"
                   type="button"
                 >
                   <LogOut className="w-4 h-4" />
@@ -272,7 +272,7 @@ export default function Compare() {
             ) : (
               <button
                 onClick={() => navigate("/auth")}
-                className="text-gray-300 hover:text-white text-sm inline-flex items-center gap-2"
+                className="text-gray-300 hover:text-foreground text-sm inline-flex items-center gap-2"
                 type="button"
               >
                 <LogIn className="w-4 h-4" />
@@ -291,7 +291,7 @@ export default function Compare() {
           </p>
         </div>
 
-        <div className="rounded-2xl p-6 border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] space-y-4">
+        <div className="rounded-2xl p-6 border border-border/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Pickup
@@ -327,7 +327,7 @@ export default function Compare() {
           <button
             onClick={handleCompare}
             disabled={loading}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-foreground font-semibold rounded-lg transition disabled:opacity-50"
             type="button"
           >
             {loading ? "Finding rides..." : "Compare Rides"}
@@ -341,7 +341,7 @@ export default function Compare() {
               {history.length > 0 && (
                 <button
                   onClick={handleClearHistory}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="text-gray-400 hover:text-foreground text-sm"
                   type="button"
                 >
                   Clear all
@@ -357,7 +357,7 @@ export default function Compare() {
                   <button
                     key={item.id}
                     onClick={() => handleHistoryClick(item)}
-                    className="w-full bg-gray-900 border border-gray-800 rounded-lg p-4 text-left hover:border-gray-700 transition"
+                    className="w-full bg-gray-900 border border-border-800 rounded-lg p-4 text-left hover:border-border-700 transition"
                     type="button"
                   >
                     <p className="font-medium">{item.pickup_address}</p>

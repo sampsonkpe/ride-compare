@@ -133,7 +133,7 @@ export default function CompareResults() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
         <div className="text-center">
           <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-gray-400" />
           <p className="text-gray-300 mb-4">{error}</p>
@@ -154,19 +154,19 @@ export default function CompareResults() {
   const otherSortLabel = sortBy === "eta" ? "Sort by Price" : "Sort by ETA";
 
   return (
-    <div className="min-h-screen text-white bg-gradient-to-b from-black via-gray-950 to-black p-6">
+    <div className="min-h-screen text-foreground bg-gradient-to-b from-black via-gray-950 to-black p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 flex justify-between items-start gap-4">
           <button
             onClick={() => navigate("/compare")}
-            className="inline-flex items-center gap-2 text-gray-300 hover:text-white"
+            className="inline-flex items-center gap-2 text-gray-300 hover:text-foreground"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
 
-          <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-border/10 bg-white/5 px-3 py-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -209,7 +209,7 @@ export default function CompareResults() {
             return (
               <div
                 key={index}
-                className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
+                className="bg-white/5 backdrop-blur-xl border border-border/10 rounded-2xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">

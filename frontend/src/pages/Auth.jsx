@@ -177,9 +177,9 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <header className="w-full py-4 px-4 md:py-6 border-b border-white/5">
+      <header className="w-full py-4 px-4 md:py-6 border-b border-border/5">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate(nextPath)}
@@ -216,7 +216,7 @@ export default function Auth() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   maxLength={150}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-900 border border-border-800 rounded-xl text-foreground placeholder:text-muted-foreground-500 focus:outline-none focus:border-blue-500"
                   placeholder="Your full name"
                   required
                 />
@@ -234,7 +234,7 @@ export default function Auth() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   maxLength={30}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-900 border border-border-800 rounded-xl text-foreground placeholder:text-muted-foreground-500 focus:outline-none focus:border-blue-500"
                   placeholder="Your phone number"
                 />
               </div>
@@ -248,7 +248,7 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 maxLength={255}
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 bg-gray-900 border border-border-800 rounded-xl text-foreground placeholder:text-muted-foreground-500 focus:outline-none focus:border-blue-500"
                 placeholder="Your email address"
                 required
               />
@@ -266,7 +266,7 @@ export default function Auth() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={6}
-                  className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 pr-12 bg-gray-900 border border-border-800 rounded-xl text-foreground placeholder:text-muted-foreground-500 focus:outline-none focus:border-blue-500"
                   placeholder="••••••••"
                   required
                 />
@@ -274,7 +274,7 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors text-sm"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-foreground transition-colors text-sm"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? "Hide" : "Show"}
@@ -293,11 +293,11 @@ export default function Auth() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 px-6 bg-blue-600 text-foreground font-semibold rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
-                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-5 h-5 border-2 border-border/30 border-t-white rounded-full animate-spin" />
                   {isLogin ? "Signing in..." : "Creating account..."}
                 </>
               ) : (
@@ -324,7 +324,7 @@ export default function Auth() {
           <div className="mt-4 text-center">
             <button
               onClick={() => navigate("/compare")}
-              className="text-gray-400 text-sm hover:text-white transition-colors"
+              className="text-gray-400 text-sm hover:text-foreground transition-colors"
               type="button"
             >
               Continue without signing in →
