@@ -1,8 +1,8 @@
-import api, { setTokens, clearTokens } from './api';
+import api, { setTokens, clearTokens, getAccessToken, loadTokens } from "./api";
 
 const authService = {
   register: async (userData) => {
-    const response = await api.post('/auth/register/', userData);
+    const response = await api.post("/auth/register/", userData);
     if (response.data.tokens) {
       setTokens(response.data.tokens.access, response.data.tokens.refresh);
     }
@@ -10,7 +10,7 @@ const authService = {
   },
 
   login: async (email, password) => {
-    const response = await api.post('/auth/login/', { email, password });
+    const response = await api.post("/auth/login/", { email, password });
     if (response.data.tokens) {
       setTokens(response.data.tokens.access, response.data.tokens.refresh);
     }
@@ -19,26 +19,28 @@ const authService = {
 
   logout: async () => {
     try {
-      await api.post('/auth/logout/', {});
+      await api.post("/auth/logout/", {});
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       clearTokens();
     }
   },
 
   getCurrentUser: async () => {
-    const response = await api.get('/auth/user/');
+    const response = await api.get("/auth/user/");
     return response.data;
   },
 
   updateProfile: async (userData) => {
-    const response = await api.put('/auth/user/', userData);
+    const response = await api.put("/auth/user/", userData);
     return response.data;
   },
 
+  // Checks stored token + ensures loadTokens ran
   isAuthenticated: () => {
-    return !!api.defaults.headers.common['Authorization'];
+    loadTokens();
+    return !!getAccessToken();
   },
 };
 
