@@ -1,17 +1,18 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider, AuthContext } from './context/AuthContext';
-import { useContext } from 'react';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Home from './pages/Home';
-import Compare from './pages/Compare';
-import Profile from './pages/Profile';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider, AuthContext } from "./context/AuthContext";
+import { useContext } from "react";
 
-// Protected route wrapper - uses AuthContext instead of sessionStorage
+import Splash from "./pages/Splash";
+import Auth from "./pages/Auth";
+import Compare from "./pages/Compare";
+import CompareResults from "./pages/CompareResults";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
-  
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -19,25 +20,42 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  
-  return user ? children : <Navigate to="/login" />;
+
+  return user ? children : <Navigate to="/auth" replace />;
 }
 
-function App() {
+export default function App() {
   return (
     <Router>
       <AuthProvider>
         <Toaster position="top-center" />
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          {/* Public */}
+          <Route path="/" element={<Splash />} />
+          <Route path="/auth" element={<Auth />} />
+
+          {/* Keep old auth routes working, but funnel them into /auth */}
+          <Route path="/login" element={<Navigate to="/auth" replace />} />
+          <Route path="/register" element={<Navigate to="/auth" replace />} />
+
+          {/* Public compare */}
+          <Route path="/compare" element={<Compare />} />
+          <Route path="/compare/results" element={<CompareResults />} />
+
+          {/* Protected */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </Router>
   );
 }
-
-export default App;

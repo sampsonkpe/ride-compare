@@ -1,3 +1,28 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Optional: Google Places dropdown styling */
+.pac-container {
+  background: rgba(17, 24, 39, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55) !important;
+  overflow: hidden !important;
+  margin-top: 8px !important;
+  z-index: 99999 !important;
+}
+
+.pac-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding: 12px 14px !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 14px !important;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+.pac-item-query {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
