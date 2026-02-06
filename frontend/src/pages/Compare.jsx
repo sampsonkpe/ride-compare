@@ -1,9 +1,10 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
 import logo from "../assets/ridecomparelogo.png";
+import LocationInput from "../components/rides/LocationInput";
 
 export default function Compare() {
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
@@ -14,14 +15,28 @@ export default function Compare() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  const pickupRef = useRef(null);
+
   useEffect(() => {
-    if (user) {
-      loadHistory();
-    } else {
-      setHistory([]);
-    }
+    if (user) loadHistory();
+    else setHistory([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Keyboard shortcut: "/" focuses pickup input
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
+        const target = e.target;
+        if (target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          pickupRef.current?.focus?.();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const loadHistory = async () => {
     try {
@@ -33,27 +48,32 @@ export default function Compare() {
   };
 
   const handleCompare = async () => {
-    const pickupAddress = pickup.address.trim();
-    const dropoffAddress = dropoff.address.trim();
+    const pickupAddress = pickup.address?.trim();
+    const dropoffAddress = dropoff.address?.trim();
 
     if (!pickupAddress || !dropoffAddress) {
       toast.error("Please enter pickup and dropoff locations");
       return;
     }
 
+    // Prefer lat/lng when available (Places / current location)
+    const pickupPayload = pickup.lat && pickup.lng
+      ? { address: pickupAddress, lat: pickup.lat, lng: pickup.lng }
+      : { address: pickupAddress };
+
+    const dropoffPayload = dropoff.lat && dropoff.lng
+      ? { address: dropoffAddress, lat: dropoff.lat, lng: dropoff.lng }
+      : { address: dropoffAddress };
+
     setLoading(true);
     try {
-      // Phase 1: send address-only payload (lat/lng will be null until Phase 2)
-      const pickupPayload = { address: pickupAddress };
-      const dropoffPayload = { address: dropoffAddress };
-
       const data = await ridesService.compareRides(pickupPayload, dropoffPayload);
 
       navigate("/compare/results", {
         state: {
           rides: data.rides,
-          pickup: { address: pickupAddress },
-          dropoff: { address: dropoffAddress },
+          pickup: pickupPayload,
+          dropoff: dropoffPayload,
         },
       });
 
@@ -103,6 +123,7 @@ export default function Compare() {
             onClick={() => navigate("/compare")}
             className="flex items-center gap-2"
             aria-label="Go to compare"
+            type="button"
           >
             <img src={logo} alt="ridecompare logo" className="h-8" />
           </button>
@@ -114,6 +135,7 @@ export default function Compare() {
                 <button
                   onClick={handleLogout}
                   className="text-gray-400 hover:text-white text-sm"
+                  type="button"
                 >
                   Logout
                 </button>
@@ -122,6 +144,7 @@ export default function Compare() {
               <button
                 onClick={() => navigate("/auth")}
                 className="text-gray-300 hover:text-white text-sm"
+                type="button"
               >
                 Sign in
               </button>
@@ -145,14 +168,16 @@ export default function Compare() {
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Pickup
             </label>
-            <input
-              type="text"
-              value={pickup.address}
-              onChange={(e) =>
-                setPickup({ address: e.target.value, lat: null, lng: null })
+            <LocationInput
+              value={pickup}
+              onChange={setPickup}
+              placeholder="Enter pickup location"
+              icon="pickup"
+              showCurrentLocation
+              inputRef={pickupRef}
+              onLocationError={() =>
+                toast.error("Location access denied or unavailable")
               }
-              placeholder="Enter your pickup location"
-              className="w-full px-4 py-4 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-600"
             />
           </div>
 
@@ -160,14 +185,14 @@ export default function Compare() {
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Dropoff
             </label>
-            <input
-              type="text"
-              value={dropoff.address}
-              onChange={(e) =>
-                setDropoff({ address: e.target.value, lat: null, lng: null })
-              }
+            <LocationInput
+              value={dropoff}
+              onChange={setDropoff}
               placeholder="Where are you going?"
-              className="w-full px-4 py-4 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-600"
+              icon="dropoff"
+              onLocationError={() =>
+                toast.error("Location search is unavailable right now")
+              }
             />
           </div>
 
@@ -175,9 +200,14 @@ export default function Compare() {
             onClick={handleCompare}
             disabled={loading}
             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+            type="button"
           >
             {loading ? "Finding rides..." : "Compare Rides"}
           </button>
+
+          <p className="text-xs text-gray-500 text-center">
+            Tip: press <span className="text-gray-300">/</span> to focus pickup
+          </p>
         </div>
 
         {/* Recent Searches (auth only) */}
@@ -189,6 +219,7 @@ export default function Compare() {
                 <button
                   onClick={handleClearHistory}
                   className="text-gray-400 hover:text-white text-sm"
+                  type="button"
                 >
                   Clear all
                 </button>
@@ -204,6 +235,7 @@ export default function Compare() {
                     key={item.id}
                     onClick={() => handleHistoryClick(item)}
                     className="w-full bg-gray-900 border border-gray-800 rounded-lg p-4 text-left hover:border-gray-700 transition"
+                    type="button"
                   >
                     <p className="font-medium">{item.pickup_address}</p>
                     <p className="text-gray-400 text-sm">
