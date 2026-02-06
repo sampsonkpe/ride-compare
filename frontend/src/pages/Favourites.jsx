@@ -1,118 +1,393 @@
-import { useEffect, useState } from "react";
-import favouritesService from "../services/favouritesService";
-import toast from "react-hot-toast";
-import { Home, Briefcase, MapPin, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CircleDot, MapPin, Crosshair, X } from "lucide-react";
 
-const typeIcon = {
-  HOME: Home,
-  WORK: Briefcase,
-  OTHER: MapPin,
-};
+function loadGoogleMapsScript() {
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
 
-function safeType(value) {
-  const t = String(value || "").toUpperCase();
-  if (t === "HOME" || t === "WORK" || t === "OTHER") return t;
-  return "OTHER";
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps?.places) return resolve();
+
+    const existing = document.getElementById("google-maps-script");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () =>
+        reject(new Error("Failed to load Google Maps"))
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(script);
+  });
 }
 
-export default function Favourites() {
-  const [favourites, setFavourites] = useState([]);
-  const [loading, setLoading] = useState(true);
+// Detect Plus Codes
+function looksLikePlusCode(text = "") {
+  return /^[A-Z0-9]{3,}\+[A-Z0-9]{2,}/i.test(text.trim());
+}
 
-  useEffect(() => {
-    loadFavourites();
-  }, []);
+function getArea(result) {
+  const comps = result?.address_components || [];
+  const sublocality = comps.find(
+    (c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
+  )?.long_name;
+  const locality = comps.find((c) => c.types.includes("locality"))?.long_name;
+  const admin = comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
 
-  const loadFavourites = async () => {
-    try {
-      const data = await favouritesService.getFavourites();
-      setFavourites(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error("Failed to load favourites");
-    } finally {
-      setLoading(false);
-    }
-  };
+  return sublocality || locality || admin || "Accra";
+}
 
-  const handleDelete = async (id) => {
-    try {
-      await favouritesService.deleteFavourite(id);
-      setFavourites((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Favourite removed");
-    } catch {
-      toast.error("Failed to remove favourite");
-    }
-  };
+function getPlaceName(result) {
+  const comps = result?.address_components || [];
+  const poi = comps.find((c) => c.types.includes("point_of_interest"))?.long_name;
+  const premise = comps.find(
+    (c) => c.types.includes("premise") || c.types.includes("establishment")
+  )?.long_name;
 
-  const handleAdd = () => {
-    toast("Add favourite flow next");
-  };
+  const first = (result?.formatted_address || "").split(",")[0]?.trim();
+  if (first && looksLikePlusCode(first)) return poi || premise || "";
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-gray-400">Loading favourites…</p>
-      </div>
-    );
+  return poi || premise || "";
+}
+
+/**
+ * Rule:
+ * - If route is missing or is "Unnamed Road", treat as Unnamed Road always.
+ * - If we have a meaningful place name: "Place Name, Unnamed Road, Area"
+ * - Else: "Unnamed Road, Area"
+ * - Never show Plus Codes.
+ */
+function getShortAddress(result) {
+  const comps = result?.address_components || [];
+  const route = comps.find((c) => c.types.includes("route"))?.long_name;
+  const area = getArea(result);
+  const placeName = getPlaceName(result);
+
+  const isUnnamed = !route || route === "Unnamed Road";
+
+  if (placeName) {
+    return isUnnamed
+      ? `${placeName}, Unnamed Road, ${area}`
+      : `${placeName}, ${route}, ${area}`;
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Favourites</h2>
+  return `Unnamed Road, ${area}`;
+}
 
+export default function LocationInput({
+  value,
+  onChange,
+  placeholder,
+  icon,
+  showCurrentLocation = false,
+  onLocationError,
+  inputRef: externalInputRef,
+}) {
+  const internalRef = useRef(null);
+  const inputRef = externalInputRef || internalRef;
+
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [predictions, setPredictions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isLocating, setIsLocating] = useState(false);
+
+  // Ghana-first bias center (defaults to Accra)
+  const [biasCenter, setBiasCenter] = useState({ lat: 5.6037, lng: -0.187 }); // Accra
+  const biasRadiusMeters = 500000; // 500km
+
+  const autocompleteServiceRef = useRef(null);
+  const placesServiceRef = useRef(null);
+  const geocoderRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    loadGoogleMapsScript()
+      .then(() => {
+        if (!mounted) return;
+        if (window.google?.maps?.places) {
+          autocompleteServiceRef.current =
+            new window.google.maps.places.AutocompleteService();
+          placesServiceRef.current = new window.google.maps.places.PlacesService(
+            document.createElement("div")
+          );
+          geocoderRef.current = new window.google.maps.Geocoder();
+          setIsLoaded(true);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        onLocationError?.();
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [onLocationError]);
+
+  // Fetch suggestions (biased toward Ghana / user's current area)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const input = value?.address || "";
+    if (!input || input.length < 2) {
+      setPredictions([]);
+      return;
+    }
+
+    const t = setTimeout(() => {
+      const location =
+        window.google?.maps?.LatLng
+          ? new window.google.maps.LatLng(biasCenter.lat, biasCenter.lng)
+          : undefined;
+
+      autocompleteServiceRef.current?.getPlacePredictions(
+        {
+          input,
+          ...(location
+            ? {
+                location,
+                radius: biasRadiusMeters,
+              }
+            : {}),
+        },
+        (preds) => {
+          setPredictions(preds || []);
+        }
+      );
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [value?.address, isLoaded, biasCenter.lat, biasCenter.lng]);
+
+  const pickIcon = useMemo(() => {
+    if (icon === "pickup") {
+      return <CircleDot className="w-5 h-5 text-blue-500" />;
+    }
+    return <MapPin className="w-5 h-5 text-red-500" />;
+  }, [icon]);
+
+  const commitSelection = (prediction) => {
+  if (!prediction?.place_id) return;
+
+  // Keep UI responsive, but don't lock lat/lng to null for long
+  onChange({ address: prediction.description, lat: null, lng: null });
+  setShowSuggestions(false);
+  setSelectedIndex(-1);
+  setPredictions([]);
+
+  placesServiceRef.current?.getDetails(
+    { placeId: prediction.place_id, fields: ["geometry"] },
+    (place, status) => {
+      if (
+        status !== window.google.maps.places.PlacesServiceStatus.OK ||
+        !place?.geometry
+      ) {
+        console.error("Places details failed:", status);
+        onLocationError?.();
+        return;
+      }
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+
+      onChange({ address: prediction.description, lat, lng });
+
+      setBiasCenter({ lat, lng });
+
+      geocoderRef.current?.geocode(
+        { location: { lat, lng } },
+        (results, geoStatus) => {
+          const r0 = results?.[0];
+
+          if (geoStatus !== "OK" || !r0) {
+            const firstChunk = (prediction.description.split(",")[0] || "").trim();
+            const safe = looksLikePlusCode(firstChunk)
+              ? "Unnamed Road, Accra"
+              : prediction.description;
+
+            onChange({ address: safe, lat, lng });
+            return;
+          }
+
+          const normalized = getShortAddress(r0);
+          const normalizedFirst = (normalized.split(",")[0] || "").trim();
+          const finalLabel = looksLikePlusCode(normalizedFirst)
+            ? `Unnamed Road, ${getArea(r0)}`
+            : normalized;
+
+          onChange({ address: finalLabel, lat, lng });
+        }
+      );
+    }
+  );
+};
+
+  const handleKeyDown = (e) => {
+    if (!showSuggestions || predictions.length === 0) return;
+
+    const visible = predictions.slice(0, 5);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < visible.length - 1 ? prev + 1 : prev));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (selectedIndex >= 0 && visible[selectedIndex]) {
+        commitSelection(visible[selectedIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+    }
+  };
+
+  const clearValue = () => {
+    onChange({ address: "", lat: null, lng: null });
+    setPredictions([]);
+    setSelectedIndex(-1);
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      onLocationError?.();
+      return;
+    }
+
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+
+        // Update bias to the user's real position
+        setBiasCenter({ lat: latitude, lng: longitude });
+
+        geocoderRef.current?.geocode(
+          { location: { lat: latitude, lng: longitude } },
+          (results, status) => {
+            const r0 = results?.[0];
+
+            // Never set "Current location"
+            if (status !== "OK" || !r0) {
+              onChange({
+                address: "Unnamed Road, Accra",
+                lat: latitude,
+                lng: longitude,
+              });
+              setIsLocating(false);
+              return;
+            }
+
+            const shortAddress = getShortAddress(r0);
+            onChange({ address: shortAddress, lat: latitude, lng: longitude });
+            setIsLocating(false);
+          }
+        );
+      },
+      (err) => {
+        console.error(err);
+        onLocationError?.();
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  return (
+    <div className="relative">
+      {showCurrentLocation && (
+        <div className="flex justify-end mb-2">
           <button
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold"
             type="button"
-            onClick={handleAdd}
+            onClick={useCurrentLocation}
+            disabled={isLocating}
+            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 inline-flex items-center gap-2"
           >
-            <Plus className="h-4 w-4" />
-            Add
+            <Crosshair className="w-4 h-4" />
+            {isLocating ? "Locating..." : "Use current location"}
           </button>
         </div>
+      )}
 
-        {favourites.length === 0 ? (
-          <div className="text-center text-gray-400 py-16">
-            No favourites yet
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {favourites.map((fav) => {
-              const t = safeType(fav.type);
-              const Icon = typeIcon[t] || MapPin;
+      <div
+        className={`relative flex items-center rounded-lg border bg-black/40 transition ${
+          isFocused ? "border-blue-600" : "border-white/10 hover:border-white/20"
+        }`}
+      >
+        <div className="pl-4 pr-2">{pickIcon}</div>
 
-              const title = fav.label || (t === "HOME" ? "Home" : t === "WORK" ? "Work" : "Favourite");
-              const address = fav.address || fav.location || "—";
+        <input
+          ref={inputRef}
+          value={value?.address || ""}
+          onChange={(e) => {
+            onChange({ address: e.target.value, lat: null, lng: null });
+            setShowSuggestions(true);
+            setSelectedIndex(-1);
+          }}
+          onFocus={() => {
+            setIsFocused(true);
+            setShowSuggestions(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            setTimeout(() => {
+              setShowSuggestions(false);
+              setSelectedIndex(-1);
+            }, 150);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="flex-1 px-2 py-4 bg-transparent text-white placeholder-gray-500 focus:outline-none"
+          type="text"
+        />
 
-              return (
-                <div
-                  key={fav.id}
-                  className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex justify-between items-center gap-4"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className="h-5 w-5 text-gray-300 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate">{title}</p>
-                      <p className="text-gray-400 text-sm truncate">{address}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleDelete(fav.id)}
-                    className="text-gray-400 hover:text-red-400 shrink-0"
-                    type="button"
-                    aria-label="Delete favourite"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+        {!!value?.address && (
+          <button
+            type="button"
+            onClick={clearValue}
+            className="px-3 text-gray-300 hover:text-white"
+            aria-label="Clear"
+          >
+            <X className="w-4 h-4" />
+          </button>
         )}
       </div>
+
+      {showSuggestions && predictions.length > 0 && (
+        <div className="absolute z-50 w-full mt-2 bg-gray-950 border border-white/10 rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+          {predictions.slice(0, 5).map((p, idx) => (
+            <button
+              key={p.place_id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => commitSelection(p)}
+              className={`w-full text-left px-4 py-3 text-sm transition ${
+                selectedIndex === idx ? "bg-white/10" : "hover:bg-white/5"
+              }`}
+            >
+              <div className="text-white truncate">
+                {p.structured_formatting?.main_text || p.description}
+              </div>
+              <div className="text-gray-400 text-xs truncate">
+                {p.structured_formatting?.secondary_text || ""}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

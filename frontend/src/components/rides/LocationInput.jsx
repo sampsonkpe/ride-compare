@@ -28,7 +28,6 @@ function loadGoogleMapsScript() {
   });
 }
 
-// Detect Plus Codes
 function looksLikePlusCode(text = "") {
   return /^[A-Z0-9]{3,}\+[A-Z0-9]{2,}/i.test(text.trim());
 }
@@ -36,10 +35,13 @@ function looksLikePlusCode(text = "") {
 function getArea(result) {
   const comps = result?.address_components || [];
   const sublocality = comps.find(
-    (c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
+    (c) =>
+      c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
   )?.long_name;
   const locality = comps.find((c) => c.types.includes("locality"))?.long_name;
-  const admin = comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
+  const admin = comps.find((c) =>
+    c.types.includes("administrative_area_level_1")
+  )?.long_name;
 
   return sublocality || locality || admin || "Accra";
 }
@@ -57,13 +59,6 @@ function getPlaceName(result) {
   return poi || premise || "";
 }
 
-/**
- * Rule:
- * - If route is missing or is "Unnamed Road", treat as Unnamed Road always.
- * - If we have a meaningful place name: "Place Name, Unnamed Road, Area"
- * - Else: "Unnamed Road, Area"
- * - Never show Plus Codes.
- */
 function getShortAddress(result) {
   const comps = result?.address_components || [];
   const route = comps.find((c) => c.types.includes("route"))?.long_name;
@@ -100,9 +95,8 @@ export default function LocationInput({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Ghana-first bias center (defaults to Accra)
-  const [biasCenter, setBiasCenter] = useState({ lat: 5.6037, lng: -0.187 }); // Accra
-  const biasRadiusMeters = 500000; // 500km
+  const [biasCenter, setBiasCenter] = useState({ lat: 5.6037, lng: -0.187 });
+  const biasRadiusMeters = 500000;
 
   const autocompleteServiceRef = useRef(null);
   const placesServiceRef = useRef(null);
@@ -134,7 +128,6 @@ export default function LocationInput({
     };
   }, [onLocationError]);
 
-  // Fetch suggestions (biased toward Ghana / user's current area)
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -170,9 +163,7 @@ export default function LocationInput({
   }, [value?.address, isLoaded, biasCenter.lat, biasCenter.lng]);
 
   const pickIcon = useMemo(() => {
-    if (icon === "pickup") {
-      return <CircleDot className="w-5 h-5 text-blue-500" />;
-    }
+    if (icon === "pickup") return <CircleDot className="w-5 h-5 text-blue-500" />;
     return <MapPin className="w-5 h-5 text-red-500" />;
   }, [icon]);
 
@@ -184,7 +175,6 @@ export default function LocationInput({
     setSelectedIndex(-1);
     setPredictions([]);
 
-    // Resolve lat/lng then normalise label using geocoder + Unnamed Road rules
     placesServiceRef.current?.getDetails(
       { placeId: prediction.place_id, fields: ["geometry"] },
       (place, status) => {
@@ -200,10 +190,11 @@ export default function LocationInput({
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
 
-        // Update bias to the selected area so subsequent searches stay local
+        // set coords immediately
+        onChange({ address: prediction.description, lat, lng });
+
         setBiasCenter({ lat, lng });
 
-        // Normalise output via geocoder to prevent plus codes & enforce rules
         geocoderRef.current?.geocode(
           { location: { lat, lng } },
           (results, geoStatus) => {
@@ -271,15 +262,16 @@ export default function LocationInput({
       (pos) => {
         const { latitude, longitude } = pos.coords;
 
-        // Update bias to the user's real position
         setBiasCenter({ lat: latitude, lng: longitude });
+
+        // set coords immediately with safe text (never "Current location")
+        onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
 
         geocoderRef.current?.geocode(
           { location: { lat: latitude, lng: longitude } },
           (results, status) => {
             const r0 = results?.[0];
 
-            // Never set "Current location"
             if (status !== "OK" || !r0) {
               onChange({
                 address: "Unnamed Road, Accra",
