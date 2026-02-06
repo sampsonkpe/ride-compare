@@ -1,391 +1,532 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CircleDot, MapPin, Crosshair, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import favouritesService from "../services/favouritesService";
+import toast from "react-hot-toast";
+import LocationInput from "../components/rides/LocationInput";
+import {
+  Home,
+  Briefcase,
+  MapPin,
+  Plus,
+  Trash2,
+  X,
+  Save,
+  Pencil,
+} from "lucide-react";
 
-function loadGoogleMapsScript() {
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
+const typeIcon = {
+  HOME: Home,
+  WORK: Briefcase,
+  OTHER: MapPin,
+};
 
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps?.places) return resolve();
-
-    const existing = document.getElementById("google-maps-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Failed to load Google Maps"))
-      );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-maps-script";
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Google Maps"));
-    document.head.appendChild(script);
-  });
+function safeType(value) {
+  const t = String(value || "").toUpperCase();
+  if (t === "HOME" || t === "WORK" || t === "OTHER") return t;
+  return "OTHER";
 }
 
-// Detect Plus Codes
-function looksLikePlusCode(text = "") {
-  return /^[A-Z0-9]{3,}\+[A-Z0-9]{2,}/i.test(text.trim());
+function normalizeAddressValue(value) {
+  if (!value) return { address: "", lat: null, lng: null };
+  if (typeof value === "string") return { address: value, lat: null, lng: null };
+  return {
+    address: value.address || "",
+    lat: value.lat ?? null,
+    lng: value.lng ?? null,
+  };
 }
 
-function getArea(result) {
-  const comps = result?.address_components || [];
-  const sublocality = comps.find(
-    (c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
-  )?.long_name;
-  const locality = comps.find((c) => c.types.includes("locality"))?.long_name;
-  const admin = comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
-
-  return sublocality || locality || admin || "Accra";
-}
-
-function getPlaceName(result) {
-  const comps = result?.address_components || [];
-  const poi = comps.find((c) => c.types.includes("point_of_interest"))?.long_name;
-  const premise = comps.find(
-    (c) => c.types.includes("premise") || c.types.includes("establishment")
-  )?.long_name;
-
-  const first = (result?.formatted_address || "").split(",")[0]?.trim();
-  if (first && looksLikePlusCode(first)) return poi || premise || "";
-
-  return poi || premise || "";
-}
-
-/**
- * Rule:
- * - If route is missing or is "Unnamed Road", treat as Unnamed Road always.
- * - If we have a meaningful place name: "Place Name, Unnamed Road, Area"
- * - Else: "Unnamed Road, Area"
- * - Never show Plus Codes.
- */
-function getShortAddress(result) {
-  const comps = result?.address_components || [];
-  const route = comps.find((c) => c.types.includes("route"))?.long_name;
-  const area = getArea(result);
-  const placeName = getPlaceName(result);
-
-  const isUnnamed = !route || route === "Unnamed Road";
-
-  if (placeName) {
-    return isUnnamed
-      ? `${placeName}, Unnamed Road, ${area}`
-      : `${placeName}, ${route}, ${area}`;
+function prettyErrorData(data) {
+  if (!data) return null;
+  if (typeof data === "string") return data;
+  try {
+    return JSON.stringify(data);
+  } catch {
+    return "Request failed";
   }
-
-  return `Unnamed Road, ${area}`;
 }
 
-export default function LocationInput({
-  value,
-  onChange,
-  placeholder,
-  icon,
-  showCurrentLocation = false,
-  onLocationError,
-  inputRef: externalInputRef,
-}) {
-  const internalRef = useRef(null);
-  const inputRef = externalInputRef || internalRef;
+function extractLatLng(fav) {
+  const lat =
+    fav?.lat ??
+    fav?.pickup_lat ??
+    fav?.latitude ??
+    fav?.location?.lat ??
+    fav?.location?.latitude ??
+    null;
+  const lng =
+    fav?.lng ??
+    fav?.pickup_lng ??
+    fav?.longitude ??
+    fav?.location?.lng ??
+    fav?.location?.longitude ??
+    null;
+  return { lat, lng };
+}
 
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [predictions, setPredictions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [isLocating, setIsLocating] = useState(false);
+function extractAddress(fav) {
+  return (
+    fav?.address ||
+    fav?.location?.address ||
+    (typeof fav?.location === "string" ? fav.location : "") ||
+    ""
+  );
+}
 
-  // Ghana-first bias center (defaults to Accra)
-  const [biasCenter, setBiasCenter] = useState({ lat: 5.6037, lng: -0.187 }); // Accra
-  const biasRadiusMeters = 500000; // 500km
+function extractLabel(fav) {
+  return fav?.label || fav?.name || fav?.title || "";
+}
 
-  const autocompleteServiceRef = useRef(null);
-  const placesServiceRef = useRef(null);
-  const geocoderRef = useRef(null);
+function extractType(fav) {
+  return safeType(fav?.type || fav?.place_type || fav?.kind || "OTHER");
+}
+
+export default function Favourites() {
+  const navigate = useNavigate();
+
+  const [favourites, setFavourites] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // modal mode
+  const [mode, setMode] = useState("create"); // "create" | "edit"
+  const [editingId, setEditingId] = useState(null);
+
+  const [type, setType] = useState("OTHER");
+  const [label, setLabel] = useState("");
+  const [locationValue, setLocationValue] = useState({
+    address: "",
+    lat: null,
+    lng: null,
+  });
 
   useEffect(() => {
-    let mounted = true;
+    loadFavourites();
+  }, []);
 
-    loadGoogleMapsScript()
-      .then(() => {
-        if (!mounted) return;
-        if (window.google?.maps?.places) {
-          autocompleteServiceRef.current =
-            new window.google.maps.places.AutocompleteService();
-          placesServiceRef.current = new window.google.maps.places.PlacesService(
-            document.createElement("div")
-          );
-          geocoderRef.current = new window.google.maps.Geocoder();
-          setIsLoaded(true);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        onLocationError?.();
-      });
+  const loadFavourites = async () => {
+    try {
+      const data = await favouritesService.getFavourites();
+      setFavourites(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Failed to load favourites");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => {
-      mounted = false;
+  const resetModal = () => {
+    setMode("create");
+    setEditingId(null);
+    setType("OTHER");
+    setLabel("");
+    setLocationValue({ address: "", lat: null, lng: null });
+  };
+
+  const openAddModal = () => {
+    resetModal();
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (fav) => {
+    const t = extractType(fav);
+    const lbl = extractLabel(fav);
+    const addr = extractAddress(fav);
+    const { lat, lng } = extractLatLng(fav);
+
+    setMode("edit");
+    setEditingId(fav.id);
+    setType(t);
+    setLabel(lbl);
+    setLocationValue({ address: addr, lat, lng });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await favouritesService.deleteFavourite(id);
+      setFavourites((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Favourite removed");
+    } catch {
+      toast.error("Failed to remove favourite");
+    }
+  };
+
+  const defaultLabelForType = useMemo(() => {
+    if (type === "HOME") return "Home";
+    if (type === "WORK") return "Work";
+    return "";
+  }, [type]);
+
+  // Payload fallback variants (create + update)
+  const buildPayloadVariants = ({ finalLabel, address, lat, lng, type }) => {
+    const v1 = { type, label: finalLabel, address, lat, lng };
+    const v2 = {
+      place_type: type,
+      name: finalLabel,
+      address,
+      latitude: lat,
+      longitude: lng,
     };
-  }, [onLocationError]);
+    const v3 = { type, label: finalLabel, location: { address, lat, lng } };
+    return [v1, v2, v3];
+  };
 
-  // Fetch suggestions (biased toward Ghana / user's current area)
-  useEffect(() => {
-    if (!isLoaded) return;
+  const createWithFallbacks = async (input) => {
+    const variants = buildPayloadVariants(input);
+    let lastErr = null;
 
-    const input = value?.address || "";
-    if (!input || input.length < 2) {
-      setPredictions([]);
+    for (const payload of variants) {
+      try {
+        const created = await favouritesService.createFavourite(payload);
+        return { created, usedPayload: payload };
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
+  };
+
+  const updateWithFallbacks = async (id, input) => {
+    const variants = buildPayloadVariants(input);
+    let lastErr = null;
+
+    for (const payload of variants) {
+      try {
+        const updated = await favouritesService.updateFavourite(id, payload);
+        return { updated, usedPayload: payload };
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
+  };
+
+  const handleSave = async () => {
+    const finalLabel = (label || defaultLabelForType).trim();
+    const address = (locationValue.address || "").trim();
+
+    if (!finalLabel) {
+      toast.error("Please enter a label");
+      return;
+    }
+    if (!address) {
+      toast.error("Please choose a location");
+      return;
+    }
+    // Ensure coords exist (prevents saving free-typed text)
+    if (locationValue.lat == null || locationValue.lng == null) {
+      toast.error("Please select a suggested place so we can get coordinates.");
       return;
     }
 
-    const t = setTimeout(() => {
-      const location =
-        window.google?.maps?.LatLng
-          ? new window.google.maps.LatLng(biasCenter.lat, biasCenter.lng)
-          : undefined;
+    setSaving(true);
+    try {
+      const input = {
+        finalLabel,
+        address,
+        lat: Number(locationValue.lat),
+        lng: Number(locationValue.lng),
+        type,
+      };
 
-      autocompleteServiceRef.current?.getPlacePredictions(
-        {
-          input,
-          ...(location
-            ? {
-                location,
-                radius: biasRadiusMeters,
-              }
-            : {}),
-        },
-        (preds) => {
-          setPredictions(preds || []);
-        }
-      );
-    }, 250);
+      if (mode === "edit" && editingId != null) {
+        const { updated } = await updateWithFallbacks(editingId, input);
 
-    return () => clearTimeout(t);
-  }, [value?.address, isLoaded, biasCenter.lat, biasCenter.lng]);
+        setFavourites((prev) =>
+          prev.map((f) => (f.id === editingId ? updated : f))
+        );
 
-  const pickIcon = useMemo(() => {
-    if (icon === "pickup") {
-      return <CircleDot className="w-5 h-5 text-blue-500" />;
-    }
-    return <MapPin className="w-5 h-5 text-red-500" />;
-  }, [icon]);
-
-  const commitSelection = (prediction) => {
-  if (!prediction?.place_id) return;
-
-  // Keep UI responsive, but don't lock lat/lng to null for long
-  onChange({ address: prediction.description, lat: null, lng: null });
-  setShowSuggestions(false);
-  setSelectedIndex(-1);
-  setPredictions([]);
-
-  placesServiceRef.current?.getDetails(
-    { placeId: prediction.place_id, fields: ["geometry"] },
-    (place, status) => {
-      if (
-        status !== window.google.maps.places.PlacesServiceStatus.OK ||
-        !place?.geometry
-      ) {
-        console.error("Places details failed:", status);
-        onLocationError?.();
+        toast.success("Favourite updated");
+        setIsModalOpen(false);
         return;
       }
 
-      const lat = place.geometry.location.lat();
-      const lng = place.geometry.location.lng();
+      const { created } = await createWithFallbacks(input);
+      setFavourites((prev) => [created, ...prev]);
 
-      onChange({ address: prediction.description, lat, lng });
-
-      setBiasCenter({ lat, lng });
-
-      geocoderRef.current?.geocode(
-        { location: { lat, lng } },
-        (results, geoStatus) => {
-          const r0 = results?.[0];
-
-          if (geoStatus !== "OK" || !r0) {
-            const firstChunk = (prediction.description.split(",")[0] || "").trim();
-            const safe = looksLikePlusCode(firstChunk)
-              ? "Unnamed Road, Accra"
-              : prediction.description;
-
-            onChange({ address: safe, lat, lng });
-            return;
-          }
-
-          const normalized = getShortAddress(r0);
-          const normalizedFirst = (normalized.split(",")[0] || "").trim();
-          const finalLabel = looksLikePlusCode(normalizedFirst)
-            ? `Unnamed Road, ${getArea(r0)}`
-            : normalized;
-
-          onChange({ address: finalLabel, lat, lng });
-        }
-      );
-    }
-  );
-};
-
-  const handleKeyDown = (e) => {
-    if (!showSuggestions || predictions.length === 0) return;
-
-    const visible = predictions.slice(0, 5);
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev < visible.length - 1 ? prev + 1 : prev));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (selectedIndex >= 0 && visible[selectedIndex]) {
-        commitSelection(visible[selectedIndex]);
-      }
-    } else if (e.key === "Escape") {
-      setShowSuggestions(false);
-      setSelectedIndex(-1);
+      toast.success("Favourite saved");
+      setIsModalOpen(false);
+    } catch (e) {
+      const msg = prettyErrorData(e?.response?.data) || "Failed to save favourite";
+      console.error(e);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const clearValue = () => {
-    onChange({ address: "", lat: null, lng: null });
-    setPredictions([]);
-    setSelectedIndex(-1);
-  };
+  const useAsPickup = (fav) => {
+    const address = extractAddress(fav);
+    const { lat, lng } = extractLatLng(fav);
 
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      onLocationError?.();
+    if (!address) {
+      toast.error("This favourite has no address");
       return;
     }
 
-    setIsLocating(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-
-        // Update bias to the user's real position
-        setBiasCenter({ lat: latitude, lng: longitude });
-
-        geocoderRef.current?.geocode(
-          { location: { lat: latitude, lng: longitude } },
-          (results, status) => {
-            const r0 = results?.[0];
-
-            // Never set "Current location"
-            if (status !== "OK" || !r0) {
-              onChange({
-                address: "Unnamed Road, Accra",
-                lat: latitude,
-                lng: longitude,
-              });
-              setIsLocating(false);
-              return;
-            }
-
-            const shortAddress = getShortAddress(r0);
-            onChange({ address: shortAddress, lat: latitude, lng: longitude });
-            setIsLocating(false);
-          }
-        );
+    navigate("/compare", {
+      state: {
+        pickup: { address, lat: lat ?? null, lng: lng ?? null },
       },
-      (err) => {
-        console.error(err);
-        onLocationError?.();
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    });
   };
 
+  const useAsDropoff = (fav) => {
+    const address = extractAddress(fav);
+    const { lat, lng } = extractLatLng(fav);
+
+    if (!address) {
+      toast.error("This favourite has no address");
+      return;
+    }
+
+    navigate("/compare", {
+      state: {
+        dropoff: { address, lat: lat ?? null, lng: lng ?? null },
+      },
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p className="text-gray-400">Loading favourites…</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative">
-      {showCurrentLocation && (
-        <div className="flex justify-end mb-2">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="text-gray-300 hover:text-white"
+            >
+              ←
+            </button>
+            <h2 className="text-2xl font-bold">Favourites</h2>
+          </div>
+
           <button
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold"
             type="button"
-            onClick={useCurrentLocation}
-            disabled={isLocating}
-            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 inline-flex items-center gap-2"
+            onClick={openAddModal}
           >
-            <Crosshair className="w-4 h-4" />
-            {isLocating ? "Locating..." : "Use current location"}
+            <Plus className="h-4 w-4" />
+            Add
           </button>
         </div>
-      )}
 
-      <div
-        className={`relative flex items-center rounded-lg border bg-black/40 transition ${
-          isFocused ? "border-blue-600" : "border-white/10 hover:border-white/20"
-        }`}
-      >
-        <div className="pl-4 pr-2">{pickIcon}</div>
+        {favourites.length === 0 ? (
+          <div className="text-center text-gray-400 py-16">No favourites yet</div>
+        ) : (
+          <div className="space-y-4">
+            {favourites.map((fav) => {
+              const t = extractType(fav);
+              const Icon = typeIcon[t] || MapPin;
 
-        <input
-          ref={inputRef}
-          value={value?.address || ""}
-          onChange={(e) => {
-            onChange({ address: e.target.value, lat: null, lng: null });
-            setShowSuggestions(true);
-            setSelectedIndex(-1);
-          }}
-          onFocus={() => {
-            setIsFocused(true);
-            setShowSuggestions(true);
-          }}
-          onBlur={() => {
-            setIsFocused(false);
-            setTimeout(() => {
-              setShowSuggestions(false);
-              setSelectedIndex(-1);
-            }, 150);
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="flex-1 px-2 py-4 bg-transparent text-white placeholder-gray-500 focus:outline-none"
-          type="text"
-        />
+              const title =
+                extractLabel(fav) ||
+                (t === "HOME" ? "Home" : t === "WORK" ? "Work" : "Favourite");
 
-        {!!value?.address && (
-          <button
-            type="button"
-            onClick={clearValue}
-            className="px-3 text-gray-300 hover:text-white"
-            aria-label="Clear"
-          >
-            <X className="w-4 h-4" />
-          </button>
+              const addressText = extractAddress(fav) || "—";
+
+              return (
+                <div
+                  key={fav.id}
+                  className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex flex-col gap-4"
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className="h-5 w-5 text-gray-300 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{title}</p>
+                        <p className="text-gray-400 text-sm truncate">
+                          {addressText}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => openEditModal(fav)}
+                        className="text-gray-300 hover:text-white"
+                        type="button"
+                        aria-label="Edit favourite"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(fav.id)}
+                        className="text-gray-400 hover:text-red-400"
+                        type="button"
+                        aria-label="Delete favourite"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => useAsPickup(fav)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                      type="button"
+                    >
+                      Use as pickup
+                    </button>
+                    <button
+                      onClick={() => useAsDropoff(fav)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold"
+                      type="button"
+                    >
+                      Use as dropoff
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {showSuggestions && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-gray-950 border border-white/10 rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
-          {predictions.slice(0, 5).map((p, idx) => (
-            <button
-              key={p.place_id}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => commitSelection(p)}
-              className={`w-full text-left px-4 py-3 text-sm transition ${
-                selectedIndex === idx ? "bg-white/10" : "hover:bg-white/5"
-              }`}
-            >
-              <div className="text-white truncate">
-                {p.structured_formatting?.main_text || p.description}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            className="absolute inset-0 bg-black/70"
+            onClick={closeModal}
+            type="button"
+            aria-label="Close modal overlay"
+          />
+
+          {/* CHANGED: div -> form to prevent bubbling/submits hitting Compare */}
+          <form
+            className="relative w-full max-w-xl rounded-2xl border border-white/10 bg-gray-950/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.7)]"
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSave();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-lg font-semibold">
+                {mode === "edit" ? "Edit favourite" : "Add favourite"}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="text-gray-300 hover:text-white"
+                type="button"
+                aria-label="Close"
+                disabled={saving}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Type
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: "HOME", label: "Home", Icon: Home },
+                    { key: "WORK", label: "Work", Icon: Briefcase },
+                    { key: "OTHER", label: "Other", Icon: MapPin },
+                  ].map((item) => {
+                    const active = type === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setType(item.key)}
+                        className={`rounded-xl border px-3 py-3 inline-flex items-center justify-center gap-2 text-sm font-semibold transition ${
+                          active
+                            ? "border-blue-500 bg-blue-600/20 text-white"
+                            : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                        }`}
+                        disabled={saving}
+                      >
+                        <item.Icon className="h-4 w-4" />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="text-gray-400 text-xs truncate">
-                {p.structured_formatting?.secondary_text || ""}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Label
+                </label>
+                <input
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder={defaultLabelForType || "e.g. Gym"}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-500 outline-none focus:border-blue-500"
+                  disabled={saving}
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  For Home/Work, you can leave this empty.
+                </p>
               </div>
-            </button>
-          ))}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Location
+                </label>
+                <LocationInput
+                  value={normalizeAddressValue(locationValue)}
+                  onChange={(v) => setLocationValue(normalizeAddressValue(v))}
+                  placeholder="Search a place"
+                  icon="pickup"
+                  showCurrentLocation
+                  onLocationError={() => toast.error("Location search unavailable")}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/10">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-semibold"
+                type="button"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+
+              {/* CHANGED: type submit so Enter works, still isolated */}
+              <button
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+                type="submit"
+                disabled={saving}
+              >
+                <Save className="h-4 w-4" />
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

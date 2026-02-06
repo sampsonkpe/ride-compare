@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
@@ -7,7 +7,72 @@ import logo from "../assets/ridecomparelogo.png";
 import LocationInput from "../components/rides/LocationInput";
 import { LogIn, LogOut, UserCog } from "lucide-react";
 
-const LAST_RESULTS_KEY = "ridecompare:last_results_v1";
+function loadGoogleMapsScript() {
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
+
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) return resolve();
+
+    const existing = document.getElementById("google-maps-script");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () =>
+        reject(new Error("Failed to load Google Maps"))
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(script);
+  });
+}
+
+async function geocodeAddress(address) {
+  const trimmed = (address || "").trim();
+  if (!trimmed) return null;
+
+  await loadGoogleMapsScript();
+
+  return new Promise((resolve) => {
+    const geocoder = new window.google.maps.Geocoder();
+
+    geocoder.geocode(
+      {
+        address: trimmed,
+        region: "GH",
+      },
+      (results, status) => {
+        if (status !== "OK" || !results?.[0]?.geometry?.location) {
+          resolve(null);
+          return;
+        }
+
+        const loc = results[0].geometry.location;
+        resolve({
+          lat: loc.lat(),
+          lng: loc.lng(),
+        });
+      }
+    );
+  });
+}
+
+function stringifyErrorData(data) {
+  if (!data) return null;
+  if (typeof data === "string") return data;
+  try {
+    return JSON.stringify(data);
+  } catch {
+    return "Request failed";
+  }
+}
 
 export default function Compare() {
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
@@ -17,7 +82,36 @@ export default function Compare() {
 
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+
   const pickupRef = useRef(null);
+
+  // Prefill from Favourites navigation state
+  useEffect(() => {
+    const incomingPickup = location.state?.pickup;
+    const incomingDropoff = location.state?.dropoff;
+
+    if (incomingPickup?.address) {
+      setPickup({
+        address: incomingPickup.address,
+        lat: incomingPickup.lat ?? null,
+        lng: incomingPickup.lng ?? null,
+      });
+    }
+
+    if (incomingDropoff?.address) {
+      setDropoff({
+        address: incomingDropoff.address,
+        lat: incomingDropoff.lat ?? null,
+        lng: incomingDropoff.lng ?? null,
+      });
+    }
+
+    if (incomingPickup || incomingDropoff) {
+      navigate("/compare", { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (user) loadHistory();
@@ -34,6 +128,24 @@ export default function Compare() {
     }
   };
 
+  const ensureCoords = async (loc) => {
+    const address = loc?.address?.trim();
+    if (!address) return null;
+
+    if (loc.lat != null && loc.lng != null) {
+      return {
+        address,
+        lat: Number(loc.lat),
+        lng: Number(loc.lng),
+      };
+    }
+
+    const coords = await geocodeAddress(address);
+    if (!coords) return null;
+
+    return { address, lat: Number(coords.lat), lng: Number(coords.lng) };
+  };
+
   const handleCompare = async () => {
     const pickupAddress = pickup.address?.trim();
     const dropoffAddress = dropoff.address?.trim();
@@ -43,46 +155,49 @@ export default function Compare() {
       return;
     }
 
-    const pickupPayload =
-      pickup.lat && pickup.lng
-        ? { address: pickupAddress, lat: pickup.lat, lng: pickup.lng }
-        : { address: pickupAddress };
-
-    const dropoffPayload =
-      dropoff.lat && dropoff.lng
-        ? { address: dropoffAddress, lat: dropoff.lat, lng: dropoff.lng }
-        : { address: dropoffAddress };
-
     setLoading(true);
     try {
-      const data = await ridesService.compareRides(pickupPayload, dropoffPayload);
+      const [pickupFinal, dropoffFinal] = await Promise.all([
+        ensureCoords({ ...pickup, address: pickupAddress }),
+        ensureCoords({ ...dropoff, address: dropoffAddress }),
+      ]);
 
-      try {
-        localStorage.setItem(
-          LAST_RESULTS_KEY,
-          JSON.stringify({
-            rides: data?.rides || [],
-            pickup: pickupPayload,
-            dropoff: dropoffPayload,
-            savedAt: Date.now(),
-          })
+      if (!pickupFinal) {
+        toast.error(
+          "Could not find pickup location. Please select a suggestion."
         );
-      } catch {
-        // ignore
+        return;
       }
+      if (!dropoffFinal) {
+        toast.error(
+          "Could not find dropoff location. Please select a suggestion."
+        );
+        return;
+      }
+
+      const data = await ridesService.compareRides(pickupFinal, dropoffFinal);
 
       navigate("/compare/results", {
         state: {
-          rides: data?.rides || [],
-          pickup: pickupPayload,
-          dropoff: dropoffPayload,
+          rides: data.rides,
+          pickup: pickupFinal,
+          dropoff: dropoffFinal,
         },
       });
 
       if (user) loadHistory();
     } catch (error) {
-      toast.error("Failed to compare rides");
-      console.error(error);
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      console.error("Compare failed:", {
+        status,
+        data,
+        pickup,
+        dropoff,
+      });
+
+      toast.error(stringifyErrorData(data) || "Failed to compare rides");
     } finally {
       setLoading(false);
     }
@@ -126,11 +241,7 @@ export default function Compare() {
             aria-label="Go to compare"
             type="button"
           >
-            <img
-              src={logo}
-              alt="ridecompare logo"
-              className="h-8 logo-dark-invert"
-            />
+            <img src={logo} alt="ridecompare logo" className="h-8 invert" />
           </button>
 
           <div className="flex items-center gap-4">
