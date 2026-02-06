@@ -1,7 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, RouterContextProvider } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { AuthProvider, AuthContext } from "./context/AuthContext";
-import { useContext } from "react";
+import { AuthProvider } from "./context/AuthContext";
 
 import Splash from "./pages/Splash";
 import Auth from "./pages/Auth";
@@ -11,19 +10,8 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Favourites from "./pages/Favourites";
 
-function ProtectedRoute({ children }) {
-  const { user, loading } = useContext(AuthContext);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
-  return user ? children : <Navigate to="/auth" replace />;
-}
+// Use your RequireAuth component (the corrected one)
+import RequireAuth from "./components/auth/RequireAuth";
 
 export default function App() {
   return (
@@ -47,20 +35,31 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute>
+              <RequireAuth>
                 <Profile />
-              </ProtectedRoute>
+              </RequireAuth>
             }
           />
 
           <Route
             path="/favourites"
             element={
-              <ProtectedRoute>
+              <RequireAuth>
                 <Favourites />
-                </ProtectedRoute>
+              </RequireAuth>
             }
           />
+
+          {/* Add when ready:
+          <Route
+            path="/history"
+            element={
+              <RequireAuth>
+                <History />
+              </RequireAuth>
+            }
+          />
+          */}
 
           {/* Catch all */}
           <Route path="*" element={<NotFound />} />

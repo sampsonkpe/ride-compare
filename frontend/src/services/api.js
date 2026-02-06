@@ -68,14 +68,31 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Decide which endpoints REQUIRE auth
+// Decide which endpoints REQUIRE auth (API-level)
+// NOTE: Compare endpoints remain public; no compare here.
 const isProtectedEndpoint = (url = "") => {
   const path = String(url);
   return (
     path.includes("/auth/user/") ||
     path.includes("/rides/history") ||
     path.includes("/favourites") ||
-    path.includes("/alerts")
+    path.includes("/alerts") ||
+    path.includes("/profile")
+  );
+};
+
+// Decide which UI routes are protected (UI-level)
+const isProtectedRoute = (pathname = "") => {
+  const p = String(pathname);
+  return (
+    p === "/profile" ||
+    p.startsWith("/profile/") ||
+    p === "/favourites" ||
+    p.startsWith("/favourites/") ||
+    p === "/history" ||
+    p.startsWith("/history/") ||
+    p === "/alerts" ||
+    p.startsWith("/alerts/")
   );
 };
 
@@ -87,11 +104,21 @@ api.interceptors.response.use(
     const requestUrl = error.config?.url || "";
 
     if (status === 401) {
+      const currentPath = window.location.pathname;
+
+      // Always clear tokens on 401 so we don’t loop with a bad token
       clearTokens();
 
-      // Only force redirect for protected resources
-      if (isProtectedEndpoint(requestUrl) && window.location.pathname !== "/auth") {
-        window.location.href = "/auth";
+      // IMPORTANT:
+      // Do NOT globally redirect just because a protected API endpoint was hit.
+      // Redirect ONLY if the user is currently on a protected UI route.
+      if (
+        isProtectedEndpoint(requestUrl) &&
+        isProtectedRoute(currentPath) &&
+        currentPath !== "/auth"
+      ) {
+        const next = encodeURIComponent(currentPath + window.location.search);
+        window.location.href = `/auth?next=${next}`;
       }
     }
 

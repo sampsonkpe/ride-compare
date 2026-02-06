@@ -1,9 +1,9 @@
-import api, { setTokens, clearTokens, getAccessToken, loadTokens } from "./api";
+import api, { setTokens, clearTokens, getAccessToken } from "./api";
 
 const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register/", userData);
-    if (response.data.tokens) {
+    if (response.data?.tokens) {
       setTokens(response.data.tokens.access, response.data.tokens.refresh);
     }
     return response.data;
@@ -11,7 +11,7 @@ const authService = {
 
   login: async (email, password) => {
     const response = await api.post("/auth/login/", { email, password });
-    if (response.data.tokens) {
+    if (response.data?.tokens) {
       setTokens(response.data.tokens.access, response.data.tokens.refresh);
     }
     return response.data;
@@ -21,6 +21,7 @@ const authService = {
     try {
       await api.post("/auth/logout/", {});
     } catch (error) {
+      // Don’t block logout if backend fails
       console.error("Logout error:", error);
     } finally {
       clearTokens();
@@ -37,9 +38,7 @@ const authService = {
     return response.data;
   },
 
-  // Checks stored token + ensures loadTokens ran
   isAuthenticated: () => {
-    loadTokens();
     return !!getAccessToken();
   },
 };

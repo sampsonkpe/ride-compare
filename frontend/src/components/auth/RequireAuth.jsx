@@ -3,15 +3,16 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 
 export default function RequireAuth({ children }) {
-  const { user, loading } = useContext(AuthContext);
+  const { isAuthed, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth", { replace: true, state: { from: location.pathname } });
+    if (!loading && !isAuthed) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      navigate(`/auth?next=${next}`, { replace: true });
     }
-  }, [loading, user, navigate, location.pathname]);
+  }, [loading, isAuthed, navigate, location.pathname, location.search]);
 
   if (loading) {
     return (
@@ -21,7 +22,7 @@ export default function RequireAuth({ children }) {
     );
   }
 
-  if (!user) return null;
+  if (!isAuthed) return null;
 
   return children;
 }

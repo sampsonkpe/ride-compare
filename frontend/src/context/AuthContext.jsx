@@ -17,6 +17,10 @@ export const AuthProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
+  // Token presence should be the primary “am I logged in?” signal.
+  // user can be null temporarily while we fetch /auth/user (no flicker redirects)
+  const isAuthed = authService.isAuthenticated();
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -75,8 +79,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading]
+    () => ({
+      user,
+      loading,
+      isAuthed, // NEW: use for guards (token-based)
+      login,
+      register,
+      logout,
+    }),
+    [user, loading, isAuthed]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
