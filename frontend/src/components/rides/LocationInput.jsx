@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CircleDot, MapPin, Crosshair, X } from "lucide-react";
 
 function loadGoogleMapsScript() {
   const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  if (!key) {
-    throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
-  }
+  if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
 
   return new Promise((resolve, reject) => {
     if (window.google?.maps?.places) return resolve();
@@ -12,7 +11,9 @@ function loadGoogleMapsScript() {
     const existing = document.getElementById("google-maps-script");
     if (existing) {
       existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")));
+      existing.addEventListener("error", () =>
+        reject(new Error("Failed to load Google Maps"))
+      );
       return;
     }
 
@@ -27,33 +28,63 @@ function loadGoogleMapsScript() {
   });
 }
 
-function getShortAddress(geocodeResult) {
-  const comps = geocodeResult?.address_components || [];
-  const route = comps.find((c) => c.types.includes("route"))?.long_name;
-  const streetNumber = comps.find((c) => c.types.includes("street_number"))?.long_name;
-  const neighborhood = comps.find((c) => c.types.includes("neighborhood"))?.long_name;
+// Detect Plus Codes like "PRV8+Q7M"
+function looksLikePlusCode(text = "") {
+  return /^[A-Z0-9]{3,}\+[A-Z0-9]{2,}/i.test(text.trim());
+}
+
+function getArea(result) {
+  const comps = result?.address_components || [];
   const sublocality =
-    comps.find((c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1"))
-      ?.long_name;
+    comps.find(
+      (c) =>
+        c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
+    )?.long_name;
   const locality = comps.find((c) => c.types.includes("locality"))?.long_name;
+  const admin =
+    comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
+
+  // Keep it simple and readable
+  return sublocality || locality || admin || "Accra";
+}
+
+function getPlaceName(result) {
+  const comps = result?.address_components || [];
+  const poi = comps.find((c) => c.types.includes("point_of_interest"))?.long_name;
   const premise =
-    comps.find((c) => c.types.includes("premise") || c.types.includes("establishment"))?.long_name;
+    comps.find((c) => c.types.includes("premise") || c.types.includes("establishment"))
+      ?.long_name;
 
-  const parts = [];
-  if (premise) parts.push(premise);
-  if (streetNumber && route) parts.push(`${streetNumber} ${route}`);
-  else if (route && route !== "Unnamed Road") parts.push(route);
-  else if (neighborhood) parts.push(neighborhood);
+  // If formatted address starts with a plus code, ignore formatted address completely
+  const first = (result?.formatted_address || "").split(",")[0]?.trim();
+  if (first && looksLikePlusCode(first)) return poi || premise || "";
 
-  if (sublocality) parts.push(sublocality);
-  else if (locality) parts.push(locality);
+  return poi || premise || "";
+}
 
-  if (parts.length) return parts.slice(0, 2).join(", ");
+/**
+ * Rule:
+ * - If route is missing or is "Unnamed Road", treat as Unnamed Road always.
+ * - If we have a meaningful place name: "Place Name, Unnamed Road, Area"
+ * - Else: "Unnamed Road, Area"
+ * - Never show Plus Codes.
+ */
+function getShortAddress(result) {
+  const comps = result?.address_components || [];
+  const route = comps.find((c) => c.types.includes("route"))?.long_name;
+  const area = getArea(result);
+  const placeName = getPlaceName(result);
 
-  const formatted = geocodeResult?.formatted_address;
-  if (formatted) return formatted.split(",").slice(0, 2).join(",").trim();
+  const isUnnamed = !route || route === "Unnamed Road";
 
-  return "Unknown location";
+  if (placeName) {
+    return isUnnamed
+      ? `${placeName}, Unnamed Road, ${area}`
+      : `${placeName}, ${route}, ${area}`;
+  }
+
+  // Anything not exactly captured -> Unnamed Road
+  return `Unnamed Road, ${area}`;
 }
 
 export default function LocationInput({
@@ -86,7 +117,8 @@ export default function LocationInput({
       .then(() => {
         if (!mounted) return;
         if (window.google?.maps?.places) {
-          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
+          autocompleteServiceRef.current =
+            new window.google.maps.places.AutocompleteService();
           placesServiceRef.current = new window.google.maps.places.PlacesService(
             document.createElement("div")
           );
@@ -114,34 +146,38 @@ export default function LocationInput({
     }
 
     const t = setTimeout(() => {
-      autocompleteServiceRef.current?.getPlacePredictions(
-        { input },
-        (preds) => setPredictions(preds || [])
-      );
+      autocompleteServiceRef.current?.getPlacePredictions({ input }, (preds) => {
+        setPredictions(preds || []);
+      });
     }, 250);
 
     return () => clearTimeout(t);
   }, [value?.address, isLoaded]);
 
   const pickIcon = useMemo(() => {
-    if (icon === "pickup") return <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />;
-    return <span className="text-red-400">📍</span>;
+    if (icon === "pickup") {
+      return <CircleDot className="w-5 h-5 text-blue-500" />;
+    }
+    return <MapPin className="w-5 h-5 text-red-500" />;
   }, [icon]);
 
   const commitSelection = (prediction) => {
     if (!prediction?.place_id) return;
 
-    // First: set address immediately
+    // Immediately show the chosen text (fast UX)
     onChange({ address: prediction.description, lat: null, lng: null });
     setShowSuggestions(false);
     setSelectedIndex(-1);
     setPredictions([]);
 
-    // Then: resolve lat/lng using Places Details
+    // Resolve lat/lng then normalise label using geocoder + Unnamed Road rules
     placesServiceRef.current?.getDetails(
-      { placeId: prediction.place_id, fields: ["geometry", "formatted_address", "name"] },
+      { placeId: prediction.place_id, fields: ["geometry"] },
       (place, status) => {
-        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) {
+        if (
+          status !== window.google.maps.places.PlacesServiceStatus.OK ||
+          !place?.geometry
+        ) {
           console.error("Places details failed:", status);
           onLocationError?.();
           return;
@@ -150,8 +186,30 @@ export default function LocationInput({
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
 
-        const niceAddress = place.formatted_address || prediction.description;
-        onChange({ address: niceAddress, lat, lng });
+        // Normalise output via geocoder to prevent plus codes & enforce rules
+        geocoderRef.current?.geocode(
+          { location: { lat, lng } },
+          (results, geoStatus) => {
+            const r0 = results?.[0];
+
+            if (geoStatus !== "OK" || !r0) {
+              const firstChunk = (prediction.description.split(",")[0] || "").trim();
+              const safe = looksLikePlusCode(firstChunk)
+                ? "Unnamed Road, Accra"
+                : prediction.description;
+              onChange({ address: safe, lat, lng });
+              return;
+            }
+
+            const normalized = getShortAddress(r0);
+            const normalizedFirst = (normalized.split(",")[0] || "").trim();
+            const finalLabel = looksLikePlusCode(normalizedFirst)
+              ? `Unnamed Road, ${getArea(r0)}`
+              : normalized;
+
+            onChange({ address: finalLabel, lat, lng });
+          }
+        );
       }
     );
   };
@@ -193,30 +251,26 @@ export default function LocationInput({
     setIsLocating(true);
 
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
 
-          geocoderRef.current?.geocode(
-            { location: { lat: latitude, lng: longitude } },
-            (results, status) => {
-              const r0 = results?.[0];
-              if (status !== "OK" || !r0) {
-                onChange({ address: "Current location", lat: latitude, lng: longitude });
-                setIsLocating(false);
-                return;
-              }
+        geocoderRef.current?.geocode(
+          { location: { lat: latitude, lng: longitude } },
+          (results, status) => {
+            const r0 = results?.[0];
 
-              const shortAddress = getShortAddress(r0);
-              onChange({ address: shortAddress, lat: latitude, lng: longitude });
+            // NEVER set "Current location"
+            if (status !== "OK" || !r0) {
+              onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
               setIsLocating(false);
+              return;
             }
-          );
-        } catch (err) {
-          console.error(err);
-          onLocationError?.();
-          setIsLocating(false);
-        }
+
+            const shortAddress = getShortAddress(r0);
+            onChange({ address: shortAddress, lat: latitude, lng: longitude });
+            setIsLocating(false);
+          }
+        );
       },
       (err) => {
         console.error(err);
@@ -235,8 +289,9 @@ export default function LocationInput({
             type="button"
             onClick={useCurrentLocation}
             disabled={isLocating}
-            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
+            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 inline-flex items-center gap-2"
           >
+            <Crosshair className="w-4 h-4" />
             {isLocating ? "Locating..." : "Use current location"}
           </button>
         </div>
@@ -274,14 +329,14 @@ export default function LocationInput({
           type="text"
         />
 
-        {!!(value?.address) && (
+        {!!value?.address && (
           <button
             type="button"
             onClick={clearValue}
             className="px-3 text-gray-300 hover:text-white"
             aria-label="Clear"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -298,7 +353,9 @@ export default function LocationInput({
                 selectedIndex === idx ? "bg-white/10" : "hover:bg-white/5"
               }`}
             >
-              <div className="text-white truncate">{p.structured_formatting?.main_text || p.description}</div>
+              <div className="text-white truncate">
+                {p.structured_formatting?.main_text || p.description}
+              </div>
               <div className="text-gray-400 text-xs truncate">
                 {p.structured_formatting?.secondary_text || ""}
               </div>

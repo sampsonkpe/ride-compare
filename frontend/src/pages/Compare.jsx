@@ -5,6 +5,7 @@ import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
 import logo from "../assets/ridecomparelogo.png";
 import LocationInput from "../components/rides/LocationInput";
+import { LogIn, LogOut, UserCog } from "lucide-react";
 
 export default function Compare() {
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
@@ -22,21 +23,6 @@ export default function Compare() {
     else setHistory([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  // Keyboard shortcut: "/" focuses pickup input
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
-        const target = e.target;
-        if (target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA") {
-          e.preventDefault();
-          pickupRef.current?.focus?.();
-        }
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const loadHistory = async () => {
     try {
@@ -57,13 +43,15 @@ export default function Compare() {
     }
 
     // Prefer lat/lng when available (Places / current location)
-    const pickupPayload = pickup.lat && pickup.lng
-      ? { address: pickupAddress, lat: pickup.lat, lng: pickup.lng }
-      : { address: pickupAddress };
+    const pickupPayload =
+      pickup.lat && pickup.lng
+        ? { address: pickupAddress, lat: pickup.lat, lng: pickup.lng }
+        : { address: pickupAddress };
 
-    const dropoffPayload = dropoff.lat && dropoff.lng
-      ? { address: dropoffAddress, lat: dropoff.lat, lng: dropoff.lng }
-      : { address: dropoffAddress };
+    const dropoffPayload =
+      dropoff.lat && dropoff.lng
+        ? { address: dropoffAddress, lat: dropoff.lat, lng: dropoff.lng }
+        : { address: dropoffAddress };
 
     setLoading(true);
     try {
@@ -132,20 +120,34 @@ export default function Compare() {
             {user ? (
               <>
                 <span className="text-gray-400 text-sm">{user?.email}</span>
+
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="text-gray-400 hover:text-white text-sm inline-flex items-center gap-2"
+                  type="button"
+                  aria-label="Profile"
+                  title="Profile"
+                >
+                  <UserCog className="w-4 h-4" />
+                  Profile
+                </button>
+
                 <button
                   onClick={handleLogout}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="text-gray-400 hover:text-white text-sm inline-flex items-center gap-2"
                   type="button"
                 >
+                  <LogOut className="w-4 h-4" />
                   Logout
                 </button>
               </>
             ) : (
               <button
                 onClick={() => navigate("/auth")}
-                className="text-gray-300 hover:text-white text-sm"
+                className="text-gray-300 hover:text-white text-sm inline-flex items-center gap-2"
                 type="button"
               >
+                <LogIn className="w-4 h-4" />
                 Sign in
               </button>
             )}
@@ -204,10 +206,6 @@ export default function Compare() {
           >
             {loading ? "Finding rides..." : "Compare Rides"}
           </button>
-
-          <p className="text-xs text-gray-500 text-center">
-            Tip: press <span className="text-gray-300">/</span> to focus pickup
-          </p>
         </div>
 
         {/* Recent Searches (auth only) */}
