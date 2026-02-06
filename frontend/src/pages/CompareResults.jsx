@@ -59,7 +59,6 @@ function typeOnlyLabel(ride) {
 
   const s = String(raw).trim();
   if (!s) return "Economy";
-
   if (/uberx/i.test(s)) return "X";
   return s;
 }
@@ -134,12 +133,12 @@ export default function CompareResults() {
   if (error) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
-        <div className="text-center">
-          <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-gray-400" />
-          <p className="text-gray-300 mb-4">{error}</p>
+        <div className="text-center max-w-md">
+          <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
+          <p className="text-muted-foreground mb-4">{error}</p>
           <button
             onClick={() => navigate("/compare")}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold"
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-95"
             type="button"
           >
             Go Back
@@ -150,43 +149,37 @@ export default function CompareResults() {
   }
 
   const currentSortLabel = sortBy === "eta" ? "Sort by ETA" : "Sort by Price";
-  const otherSortValue = sortBy === "eta" ? "price" : "eta";
-  const otherSortLabel = sortBy === "eta" ? "Sort by Price" : "Sort by ETA";
 
   return (
-    <div className="min-h-screen text-foreground bg-gradient-to-b from-black via-gray-950 to-black p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 flex justify-between items-start gap-4">
           <button
             onClick={() => navigate("/compare")}
-            className="inline-flex items-center gap-2 text-gray-300 hover:text-foreground"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
 
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border/10 bg-white/5 px-3 py-2">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-sm text-gray-200 outline-none appearance-none pr-6"
+              className="bg-transparent text-sm text-foreground outline-none appearance-none pr-6"
               aria-label="Sort results"
             >
-              <option value={sortBy} className="text-black">
-                {currentSortLabel}
-              </option>
-              <option value={otherSortValue} className="text-black">
-                {otherSortLabel}
-              </option>
+              <option value="eta">Sort by ETA</option>
+              <option value="price">Sort by Price</option>
             </select>
-            <ChevronDown className="h-4 w-4 text-gray-400 -ml-5 pointer-events-none" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground -ml-5 pointer-events-none" />
           </div>
         </div>
 
         <div className="mb-6">
           <h2 className="text-2xl font-bold">Available rides</h2>
-          <p className="text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             {pickupText} <span className="mx-2">→</span> {dropoffText}
           </p>
         </div>
@@ -207,32 +200,27 @@ export default function CompareResults() {
             const deepLink = PROVIDER_DEEPLINK[providerKey] || "https://ridecompare.app";
 
             return (
-              <div
-                key={index}
-                className="bg-white/5 backdrop-blur-xl border border-border/10 rounded-2xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
-              >
+              <div key={index} className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     {logo ? (
                       <img
                         src={logo}
                         alt={`${company} logo`}
-                        className={`h-14 w-auto object-contain ${
-                          providerKey === "UBER" ? "logo-dark-invert" : ""
-                        }`}
+                        className={`h-14 w-auto object-contain ${providerKey === "UBER" ? "logo-dark-invert" : ""}`}
                       />
                     ) : (
-                      <div className="text-sm text-gray-300">{company}</div>
+                      <div className="text-sm text-muted-foreground">{company}</div>
                     )}
                   </div>
 
                   <div className="text-right">
                     <div className="text-3xl font-bold leading-tight">{priceText}</div>
-                    <div className="mt-1 inline-flex items-center gap-1 text-gray-300 text-sm justify-end">
+                    <div className="mt-1 inline-flex items-center gap-1 text-muted-foreground text-sm justify-end">
                       <Clock className="h-4 w-4" />
                       {etaText} min
                     </div>
-                    <div className="mt-1 text-xs text-gray-400">{rideTypeFull}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{rideTypeFull}</div>
                   </div>
                 </div>
 
@@ -240,7 +228,7 @@ export default function CompareResults() {
                   href={deepLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full mt-4 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold inline-flex justify-center"
+                  className="w-full mt-4 py-3 bg-primary text-primary-foreground rounded-xl font-semibold inline-flex justify-center hover:opacity-95"
                 >
                   Continue in App
                 </a>

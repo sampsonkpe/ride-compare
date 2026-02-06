@@ -1,72 +1,178 @@
-@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
 
-/* ================================
-   Design Tokens (RideCompare)
-   ================================ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Light theme (default) */
-:root {
-  /* Core surfaces */
-  --background: 0 0% 98%;        /* #FAFAFA */
-  --foreground: 220 20% 15%;     /* #1F2937 */
+@layer base {
+  :root {
+    /* Light theme */
+    --background: 0 0% 98%; /* #FAFAFA */
+    --foreground: 220 20% 15%; /* #1F2937 */
 
-  --card: 0 0% 100%;
-  --card-foreground: 220 20% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 15%;
 
-  /* Brand */
-  --primary: 215 50% 25%;        /* #214268 */
-  --primary-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 15%;
 
-  /* UI layers */
-  --secondary: 0 0% 96%;         /* #F5F5F5 */
-  --muted: 0 0% 96%;
-  --muted-foreground: 220 10% 50%; /* #737B8B */
+    --primary: 215 50% 25%; /* #214268 */
+    --primary-foreground: 0 0% 100%;
 
-  --accent: 215 40% 95%;         /* #EDF2F7 */
+    --secondary: 0 0% 96%; /* #F5F5F5 */
+    --secondary-foreground: 220 20% 15%;
 
-  /* Borders & inputs */
-  --border: 0 0% 90%;            /* #E6E6E6 */
-  --input: 0 0% 90%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 220 10% 50%; /* #737B8B */
 
-  /* Status */
-  --destructive: 0 72% 51%;      /* #E53935 */
-  --destructive-foreground: 0 0% 100%;
+    --accent: 215 40% 95%;
+    --accent-foreground: 215 50% 25%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%; /* #E6E6E6 */
+    --input: 0 0% 90%;
+    --ring: 215 50% 25%;
+
+    --radius: 0.75rem;
+
+    /* Platform brand colors */
+    --uber-black: 0 0% 0%;
+    --bolt-green: 160 70% 42%;
+    --yango-red: 0 75% 50%;
+
+    /* Shadows */
+    --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.06);
+    --shadow-card-hover: 0 4px 20px -4px hsl(0 0% 0% / 0.1);
+  }
+
+  .dark {
+    /* Dark theme */
+    --background: 220 15% 8%; /* #121418 */
+    --foreground: 0 0% 95%; /* #F2F2F2 */
+
+    --card: 220 15% 12%; /* #1A1D23 */
+    --card-foreground: 0 0% 95%;
+
+    --popover: 220 15% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 215 60% 50%; /* #3B82C4 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 18%; /* #272B35 */
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 220 15% 16%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 215 40% 20%;
+    --accent-foreground: 215 60% 70%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 20%; /* #2D323D */
+    --input: 220 15% 20%;
+    --ring: 215 60% 50%;
+
+    --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.4);
+    --shadow-card-hover: 0 4px 20px -4px hsl(215 60% 50% / 0.15);
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    margin: 0;
+    font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-/* Dark theme */
-.dark {
-  --background: 220 15% 8%;      /* #121418 */
-  --foreground: 0 0% 95%;        /* #F2F2F2 */
-
-  --card: 220 15% 12%;           /* #1A1D23 */
-  --card-foreground: 0 0% 95%;
-
-  --primary: 215 60% 50%;        /* #3B82C4 */
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 220 15% 18%;      /* #272B35 */
-  --muted: 220 15% 16%;          /* #232730 */
-  --muted-foreground: 220 10% 65%;
-
-  --border: 220 15% 20%;         /* #2D323D */
-  --input: 220 15% 20%;
+/* Utilities */
+@layer utilities {
+  .text-balance {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
 }
 
-/* ================================
-   Base application styles
-   ================================ */
-
-html,
-body {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
+/* Animations */
+@keyframes bounce-gentle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
-/* ================================
-   Google Places Autocomplete
-   (Dark-mode biased on purpose)
-   ================================ */
+.animate-bounce-gentle {
+  animation: bounce-gentle 1.5s ease-in-out infinite;
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+.animate-fade-out {
+  animation: fade-out 0.5s ease-out forwards;
+}
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
 
+/* Dark-mode logo inversion */
+.logo-dark-invert {
+  filter: invert(1) brightness(2);
+}
+
+/* ===== Google Places dropdown styling (keep as-is) ===== */
 .pac-container {
   background: rgba(17, 24, 39, 0.95) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -76,29 +182,16 @@ body {
   margin-top: 8px !important;
   z-index: 99999 !important;
 }
-
 .pac-item {
   border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
   padding: 12px 14px !important;
   color: rgba(255, 255, 255, 0.82) !important;
   font-size: 14px !important;
 }
-
 .pac-item:hover,
 .pac-item-selected {
   background: rgba(59, 130, 246, 0.12) !important;
 }
-
 .pac-item-query {
   color: rgba(255, 255, 255, 0.95) !important;
-}
-
-/* ================================
-   Utility helpers
-   ================================ */
-
-/* Temporary logo inversion helper (acceptable for now)
-   Long-term: prefer explicit light/dark logo assets */
-.logo-dark-invert {
-  filter: invert(1) brightness(2);
 }

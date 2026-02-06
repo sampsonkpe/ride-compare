@@ -1,6 +1,7 @@
-import { useState, useContext, useEffect, useRef } from "react";
+import { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { ThemeContext } from "../context/ThemeContext";
 import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
 import logo from "../assets/ridecomparelogo.png";
@@ -16,7 +17,7 @@ function loadGoogleMapsScript() {
 
     const existing = document.getElementById("google-maps-script");
     if (existing) {
-      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("load", resolve);
       existing.addEventListener("error", () =>
         reject(new Error("Failed to load Google Maps"))
       );
@@ -28,7 +29,7 @@ function loadGoogleMapsScript() {
     script.async = true;
     script.defer = true;
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
-    script.onload = () => resolve();
+    script.onload = resolve;
     script.onerror = () => reject(new Error("Failed to load Google Maps"));
     document.head.appendChild(script);
   });
@@ -42,36 +43,16 @@ async function geocodeAddress(address) {
 
   return new Promise((resolve) => {
     const geocoder = new window.google.maps.Geocoder();
-
-    geocoder.geocode(
-      {
-        address: trimmed,
-        region: "GH",
-      },
-      (results, status) => {
-        if (status !== "OK" || !results?.[0]?.geometry?.location) {
-          resolve(null);
-          return;
-        }
-
-        const loc = results[0].geometry.location;
-        resolve({
-          lat: loc.lat(),
-          lng: loc.lng(),
-        });
+    geocoder.geocode({ address: trimmed, region: "GH" }, (results, status) => {
+      if (status !== "OK" || !results?.[0]?.geometry?.location) {
+        resolve(null);
+        return;
       }
-    );
-  });
-}
 
-function stringifyErrorData(data) {
-  if (!data) return null;
-  if (typeof data === "string") return data;
-  try {
-    return JSON.stringify(data);
-  } catch {
-    return "Request failed";
-  }
+      const loc = results[0].geometry.location;
+      resolve({ lat: loc.lat(), lng: loc.lng() });
+    });
+  });
 }
 
 export default function Compare() {
@@ -81,31 +62,19 @@ export default function Compare() {
   const [history, setHistory] = useState([]);
 
   const { user, logout } = useContext(AuthContext);
+  const { isDark } = useContext(ThemeContext);
+
   const navigate = useNavigate();
   const location = useLocation();
-
   const pickupRef = useRef(null);
 
-  // Prefill from Favourites navigation state
+  /* Prefill from favourites */
   useEffect(() => {
     const incomingPickup = location.state?.pickup;
     const incomingDropoff = location.state?.dropoff;
 
-    if (incomingPickup?.address) {
-      setPickup({
-        address: incomingPickup.address,
-        lat: incomingPickup.lat ?? null,
-        lng: incomingPickup.lng ?? null,
-      });
-    }
-
-    if (incomingDropoff?.address) {
-      setDropoff({
-        address: incomingDropoff.address,
-        lat: incomingDropoff.lat ?? null,
-        lng: incomingDropoff.lng ?? null,
-      });
-    }
+    if (incomingPickup?.address) setPickup(incomingPickup);
+    if (incomingDropoff?.address) setDropoff(incomingDropoff);
 
     if (incomingPickup || incomingDropoff) {
       navigate("/compare", { replace: true, state: null });
@@ -122,9 +91,9 @@ export default function Compare() {
   const loadHistory = async () => {
     try {
       const data = await ridesService.getHistory();
-      setHistory(data);
-    } catch (error) {
-      console.error("Failed to load history:", error);
+      setHistory(Array.isArray(data) ? data : []);
+    } catch {
+      /* silent */
     }
   };
 
@@ -133,24 +102,17 @@ export default function Compare() {
     if (!address) return null;
 
     if (loc.lat != null && loc.lng != null) {
-      return {
-        address,
-        lat: Number(loc.lat),
-        lng: Number(loc.lng),
-      };
+      return { address, lat: Number(loc.lat), lng: Number(loc.lng) };
     }
 
     const coords = await geocodeAddress(address);
     if (!coords) return null;
 
-    return { address, lat: Number(coords.lat), lng: Number(coords.lng) };
+    return { address, lat: coords.lat, lng: coords.lng };
   };
 
   const handleCompare = async () => {
-    const pickupAddress = pickup.address?.trim();
-    const dropoffAddress = dropoff.address?.trim();
-
-    if (!pickupAddress || !dropoffAddress) {
+    if (!pickup.address || !dropoff.address) {
       toast.error("Please enter pickup and dropoff locations");
       return;
     }
@@ -158,142 +120,104 @@ export default function Compare() {
     setLoading(true);
     try {
       const [pickupFinal, dropoffFinal] = await Promise.all([
-        ensureCoords({ ...pickup, address: pickupAddress }),
-        ensureCoords({ ...dropoff, address: dropoffAddress }),
+        ensureCoords(pickup),
+        ensureCoords(dropoff),
       ]);
 
-      if (!pickupFinal) {
-        toast.error(
-          "Could not find pickup location. Please select a suggestion."
-        );
-        return;
-      }
-      if (!dropoffFinal) {
-        toast.error(
-          "Could not find dropoff location. Please select a suggestion."
-        );
+      if (!pickupFinal || !dropoffFinal) {
+        toast.error("Please select a suggested place");
         return;
       }
 
       const data = await ridesService.compareRides(pickupFinal, dropoffFinal);
 
       navigate("/compare/results", {
-        state: {
-          rides: data.rides,
-          pickup: pickupFinal,
-          dropoff: dropoffFinal,
-        },
+        state: { rides: data.rides, pickup: pickupFinal, dropoff: dropoffFinal },
       });
 
       if (user) loadHistory();
-    } catch (error) {
-      const status = error?.response?.status;
-      const data = error?.response?.data;
-
-      console.error("Compare failed:", {
-        status,
-        data,
-        pickup,
-        dropoff,
-      });
-
-      toast.error(stringifyErrorData(data) || "Failed to compare rides");
+    } catch (err) {
+      toast.error("Failed to compare rides");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClearHistory = async () => {
-    try {
-      await ridesService.clearHistory();
-      setHistory([]);
-      toast.success("History cleared");
-    } catch {
-      toast.error("Failed to clear history");
+  const headerRight = useMemo(() => {
+    if (user) {
+      return (
+        <>
+          <span className="hidden sm:inline text-muted-foreground text-sm">
+            {user.email}
+          </span>
+
+          <button
+            onClick={() => navigate("/profile")}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
+            type="button"
+          >
+            <UserCog className="h-4 w-4" />
+            Profile
+          </button>
+
+          <button
+            onClick={async () => {
+              await logout();
+              navigate("/auth");
+            }}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
+            type="button"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
+        </>
+      );
     }
-  };
 
-  const handleHistoryClick = (item) => {
-    setPickup({
-      address: item.pickup_address,
-      lat: item.pickup_lat,
-      lng: item.pickup_lng,
-    });
-    setDropoff({
-      address: item.dropoff_address,
-      lat: item.dropoff_lat,
-      lng: item.dropoff_lng,
-    });
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/auth");
-  };
+    return (
+      <button
+        onClick={() => navigate("/auth")}
+        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
+        type="button"
+      >
+        <LogIn className="h-4 w-4" />
+        Sign in
+      </button>
+    );
+  }, [user, navigate, logout]);
 
   return (
-    <div className="min-h-screen text-foreground bg-gradient-to-b from-black via-gray-950 to-black">
-      <header className="border-b border-border-800 p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border/60">
+        <div className="max-w-4xl mx-auto p-4 flex justify-between items-center">
           <button
             onClick={() => navigate("/compare")}
             className="flex items-center gap-2"
-            aria-label="Go to compare"
             type="button"
           >
-            <img src={logo} alt="ridecompare logo" className="h-8 invert" />
+            <img
+              src={logo}
+              alt="RideCompare"
+              className={`h-8 ${isDark ? "logo-dark-invert" : ""}`}
+            />
           </button>
 
-          <div className="flex items-center gap-4">
-            {user ? (
-              <>
-                <span className="text-gray-400 text-sm">{user?.email}</span>
-
-                <button
-                  onClick={() => navigate("/profile")}
-                  className="text-gray-400 hover:text-foreground text-sm inline-flex items-center gap-2"
-                  type="button"
-                  aria-label="Profile"
-                  title="Profile"
-                >
-                  <UserCog className="w-4 h-4" />
-                  Profile
-                </button>
-
-                <button
-                  onClick={handleLogout}
-                  className="text-gray-400 hover:text-foreground text-sm inline-flex items-center gap-2"
-                  type="button"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => navigate("/auth")}
-                className="text-gray-300 hover:text-foreground text-sm inline-flex items-center gap-2"
-                type="button"
-              >
-                <LogIn className="w-4 h-4" />
-                Sign in
-              </button>
-            )}
-          </div>
+          <div className="flex items-center gap-4">{headerRight}</div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4">Compare rides instantly</h2>
-          <p className="text-gray-400 text-lg">
-            Find the best price and fastest ride across all platforms
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-bold mb-3">Compare rides instantly</h1>
+          <p className="text-muted-foreground text-lg">
+            Find the best price across all platforms
           </p>
         </div>
 
-        <div className="rounded-2xl p-6 border border-border/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] space-y-4">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Pickup
             </label>
             <LocationInput
@@ -304,13 +228,13 @@ export default function Compare() {
               showCurrentLocation
               inputRef={pickupRef}
               onLocationError={() =>
-                toast.error("Location access denied or unavailable")
+                toast.error("Location access unavailable")
               }
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Dropoff
             </label>
             <LocationInput
@@ -319,7 +243,7 @@ export default function Compare() {
               placeholder="Where are you going?"
               icon="dropoff"
               onLocationError={() =>
-                toast.error("Location search is unavailable right now")
+                toast.error("Location search unavailable")
               }
             />
           </div>
@@ -327,49 +251,12 @@ export default function Compare() {
           <button
             onClick={handleCompare}
             disabled={loading}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-foreground font-semibold rounded-lg transition disabled:opacity-50"
+            className="w-full py-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-95 disabled:opacity-50"
             type="button"
           >
-            {loading ? "Finding rides..." : "Compare Rides"}
+            {loading ? "Finding rides…" : "Compare Rides"}
           </button>
         </div>
-
-        {user && (
-          <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Recent searches</h3>
-              {history.length > 0 && (
-                <button
-                  onClick={handleClearHistory}
-                  className="text-gray-400 hover:text-foreground text-sm"
-                  type="button"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            {history.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No recent searches</p>
-            ) : (
-              <div className="space-y-3">
-                {history.slice(0, 5).map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleHistoryClick(item)}
-                    className="w-full bg-gray-900 border border-border-800 rounded-lg p-4 text-left hover:border-border-700 transition"
-                    type="button"
-                  >
-                    <p className="font-medium">{item.pickup_address}</p>
-                    <p className="text-gray-400 text-sm">
-                      → {item.dropoff_address}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </main>
     </div>
   );
