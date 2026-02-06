@@ -28,34 +28,29 @@ function loadGoogleMapsScript() {
   });
 }
 
-// Detect Plus Codes like "PRV8+Q7M"
+// Detect Plus Codes
 function looksLikePlusCode(text = "") {
   return /^[A-Z0-9]{3,}\+[A-Z0-9]{2,}/i.test(text.trim());
 }
 
 function getArea(result) {
   const comps = result?.address_components || [];
-  const sublocality =
-    comps.find(
-      (c) =>
-        c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
-    )?.long_name;
+  const sublocality = comps.find(
+    (c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
+  )?.long_name;
   const locality = comps.find((c) => c.types.includes("locality"))?.long_name;
-  const admin =
-    comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
+  const admin = comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
 
-  // Keep it simple and readable
   return sublocality || locality || admin || "Accra";
 }
 
 function getPlaceName(result) {
   const comps = result?.address_components || [];
   const poi = comps.find((c) => c.types.includes("point_of_interest"))?.long_name;
-  const premise =
-    comps.find((c) => c.types.includes("premise") || c.types.includes("establishment"))
-      ?.long_name;
+  const premise = comps.find(
+    (c) => c.types.includes("premise") || c.types.includes("establishment")
+  )?.long_name;
 
-  // If formatted address starts with a plus code, ignore formatted address completely
   const first = (result?.formatted_address || "").split(",")[0]?.trim();
   if (first && looksLikePlusCode(first)) return poi || premise || "";
 
@@ -83,7 +78,6 @@ function getShortAddress(result) {
       : `${placeName}, ${route}, ${area}`;
   }
 
-  // Anything not exactly captured -> Unnamed Road
   return `Unnamed Road, ${area}`;
 }
 
@@ -105,6 +99,10 @@ export default function LocationInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLocating, setIsLocating] = useState(false);
+
+  // Ghana-first bias center (defaults to Accra)
+  const [biasCenter, setBiasCenter] = useState({ lat: 5.6037, lng: -0.187 }); // Accra
+  const biasRadiusMeters = 500000; // 500km
 
   const autocompleteServiceRef = useRef(null);
   const placesServiceRef = useRef(null);
@@ -136,9 +134,10 @@ export default function LocationInput({
     };
   }, [onLocationError]);
 
-  // Fetch suggestions
+  // Fetch suggestions (biased toward Ghana / user's current area)
   useEffect(() => {
     if (!isLoaded) return;
+
     const input = value?.address || "";
     if (!input || input.length < 2) {
       setPredictions([]);
@@ -146,13 +145,29 @@ export default function LocationInput({
     }
 
     const t = setTimeout(() => {
-      autocompleteServiceRef.current?.getPlacePredictions({ input }, (preds) => {
-        setPredictions(preds || []);
-      });
+      const location =
+        window.google?.maps?.LatLng
+          ? new window.google.maps.LatLng(biasCenter.lat, biasCenter.lng)
+          : undefined;
+
+      autocompleteServiceRef.current?.getPlacePredictions(
+        {
+          input,
+          ...(location
+            ? {
+                location,
+                radius: biasRadiusMeters,
+              }
+            : {}),
+        },
+        (preds) => {
+          setPredictions(preds || []);
+        }
+      );
     }, 250);
 
     return () => clearTimeout(t);
-  }, [value?.address, isLoaded]);
+  }, [value?.address, isLoaded, biasCenter.lat, biasCenter.lng]);
 
   const pickIcon = useMemo(() => {
     if (icon === "pickup") {
@@ -164,7 +179,6 @@ export default function LocationInput({
   const commitSelection = (prediction) => {
     if (!prediction?.place_id) return;
 
-    // Immediately show the chosen text (fast UX)
     onChange({ address: prediction.description, lat: null, lng: null });
     setShowSuggestions(false);
     setSelectedIndex(-1);
@@ -185,6 +199,9 @@ export default function LocationInput({
 
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
+
+        // Update bias to the selected area so subsequent searches stay local
+        setBiasCenter({ lat, lng });
 
         // Normalise output via geocoder to prevent plus codes & enforce rules
         geocoderRef.current?.geocode(
@@ -254,14 +271,21 @@ export default function LocationInput({
       (pos) => {
         const { latitude, longitude } = pos.coords;
 
+        // Update bias to the user's real position
+        setBiasCenter({ lat: latitude, lng: longitude });
+
         geocoderRef.current?.geocode(
           { location: { lat: latitude, lng: longitude } },
           (results, status) => {
             const r0 = results?.[0];
 
-            // NEVER set "Current location"
+            // Never set "Current location"
             if (status !== "OK" || !r0) {
-              onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
+              onChange({
+                address: "Unnamed Road, Accra",
+                lat: latitude,
+                lng: longitude,
+              });
               setIsLocating(false);
               return;
             }
