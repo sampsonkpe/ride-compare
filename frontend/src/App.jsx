@@ -44,9 +44,18 @@ export default function App() {
                 </AppShell>
               }
             />
-            <Route path="/compare/results" element={<Navigate to="/compare" replace />} />
+            
+            {/* Compare Results */}
+            <Route
+              path="/compare/results"
+              element={
+                <AppShell header="app" maxWidth="max-w-lg">
+                  <CompareResults />
+                </AppShell>
+              }
+            />
 
-            {/* Profile + places (merged) */}
+            {/* Profile (merged) */}
             <Route
               path="/profile"
               element={
@@ -58,7 +67,7 @@ export default function App() {
               }
             />
 
-            {/* Merge: favourites no longer a page */}
+            {/* Legacy favourites route -> profile */}
             <Route path="/favourites" element={<Navigate to="/profile" replace />} />
 
             <Route path="*" element={<NotFound />} />

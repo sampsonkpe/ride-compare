@@ -9,11 +9,14 @@ export default function BottomSheet({
   onClose,
   title,
   subtitle,
+  headerRight,
+  headerBottom,
   children,
   snapPoints = [0.18, 0.58, 0.92],
   initialSnap = 1,
   zIndex = 50,
 }) {
+  const sheetRef = useRef(null);
   const dragRef = useRef({
     active: false,
     startY: 0,
@@ -39,7 +42,17 @@ export default function BottomSheet({
     };
   }, [open]);
 
-  // Escape to close
+  // Open/close animations
+  useEffect(() => {
+    if (!open) {
+      setTranslate(1);
+      return;
+    }
+    setSnapIndex(initialSnap);
+    setTranslate(points[initialSnap] ?? points[1] ?? 0.42);
+  }, [open, initialSnap, points]);
+
+  // Close on Escape
   useEffect(() => {
     if (!open) return;
 
@@ -50,16 +63,6 @@ export default function BottomSheet({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
-
-  // Open/close animations
-  useEffect(() => {
-    if (!open) {
-      setTranslate(1);
-      return;
-    }
-    setSnapIndex(initialSnap);
-    setTranslate(points[initialSnap] ?? points[1] ?? 0.42);
-  }, [open, initialSnap, points]);
 
   const heightPx = () => window.innerHeight;
 
@@ -99,6 +102,7 @@ export default function BottomSheet({
       }
     });
 
+    // dragged far down -> close
     if (cur > 0.82) {
       onClose?.();
       return;
@@ -120,6 +124,7 @@ export default function BottomSheet({
 
   return (
     <div className="fixed inset-0" style={{ zIndex }}>
+      {/* backdrop */}
       <button
         type="button"
         aria-label="Close sheet"
@@ -127,7 +132,9 @@ export default function BottomSheet({
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
       />
 
+      {/* sheet */}
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         className={[
@@ -141,27 +148,35 @@ export default function BottomSheet({
           willChange: "transform",
         }}
       >
+        {/* sticky drag handle + header */}
         <div
-          className="px-4 pt-3 pb-2 select-none"
+          className="px-4 pt-3 pb-3 select-none sticky top-0 bg-card/95 backdrop-blur border-b border-border"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
         >
           <div className="mx-auto h-1.5 w-12 rounded-full bg-muted" />
 
-          {(title || subtitle) ? (
-            <div className="mt-3">
-              {title ? <div className="text-sm font-semibold">{title}</div> : null}
-              {subtitle ? (
-                <div className="text-xs text-muted-foreground mt-1">{subtitle}</div>
-              ) : null}
+          {title || subtitle ? (
+            <div className="mt-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {title ? <div className="text-sm font-semibold">{title}</div> : null}
+                {subtitle ? (
+                  <div className="text-xs text-muted-foreground mt-1 truncate">
+                    {subtitle}
+                  </div>
+                ) : null}
+              </div>
+
+              {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
             </div>
           ) : null}
+
+          {headerBottom ? <div className="mt-3">{headerBottom}</div> : null}
         </div>
 
-        <div className="max-h-[82vh] overflow-y-auto px-4 pb-6">
-          {children}
-        </div>
+        {/* content */}
+        <div className="max-h-[82vh] overflow-y-auto px-4 pb-6">{children}</div>
       </div>
     </div>
   );
