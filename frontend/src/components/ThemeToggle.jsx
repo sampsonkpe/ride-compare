@@ -1,30 +1,33 @@
 import { useContext } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { ThemeContext } from "../context/ThemeContext";
 
 export default function ThemeToggle() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) return null;
-
-  const { isDark, toggleTheme } = ctx;
+  const themeCtx = useContext(ThemeContext);
+  const isDark = themeCtx?.isDark;
 
   return (
     <button
       type="button"
-      onClick={toggleTheme}
-      className={[
-        "inline-flex items-center justify-center",
-        "w-10 h-10 rounded-full",
-        "border transition-colors",
-        // neutral styling that works on both light/dark pages
-        "bg-white/90 text-slate-800 border-black/10 hover:bg-white",
-        "dark:bg-white/10 dark:text-white dark:border-white/10 dark:hover:bg-white/15",
-        "backdrop-blur",
-      ].join(" ")}
+      onClick={() => themeCtx?.toggleTheme?.()}
+      className="p-2 rounded-full hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Light mode" : "Dark mode"}
     >
-      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      <span className="relative block h-5 w-5">
+        <Sun
+          className={[
+            "absolute inset-0 h-5 w-5 text-primary transition-all duration-200",
+            isDark ? "scale-0 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100",
+          ].join(" ")}
+        />
+        <Moon
+          className={[
+            "absolute inset-0 h-5 w-5 text-primary transition-all duration-200",
+            isDark ? "scale-100 rotate-0 opacity-100" : "scale-0 -rotate-90 opacity-0",
+          ].join(" ")}
+        />
+      </span>
     </button>
   );
 }

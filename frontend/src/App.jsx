@@ -11,12 +11,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 import RequireAuth from "./components/auth/RequireAuth";
-import ThemeToggle from "./components/ThemeToggle";
 import AppShell from "./components/layout/AppShell";
-
-function TopRightActions() {
-  return <ThemeToggle />;
-}
 
 export default function App() {
   return (
@@ -25,26 +20,18 @@ export default function App() {
         <AuthProvider>
           <Toaster position="top-center" />
           <Routes>
-            {/* Splash: no topbar */}
+            {/* Splash stays full screen */}
             <Route path="/" element={<Splash />} />
 
-            {/* Auth: topbar with back */}
+            {/* Auth (single page: login + signup) */}
             <Route
               path="/auth"
               element={
-                <AppShell
-                  center
-                  topbarProps={{
-                    showBack: true,
-                    right: <TopRightActions />,
-                  }}
-                >
+                <AppShell header="auth" maxWidth="max-w-sm">
                   <Auth />
                 </AppShell>
               }
             />
-
-            {/* Old routes redirect */}
             <Route path="/login" element={<Navigate to="/auth" replace />} />
             <Route path="/register" element={<Navigate to="/auth" replace />} />
 
@@ -52,52 +39,33 @@ export default function App() {
             <Route
               path="/compare"
               element={
-                <AppShell
-                  topbarProps={{
-                    right: <TopRightActions />,
-                    tagline: "Compare. Choose. Ride.",
-                  }}
-                >
+                <AppShell header="app" maxWidth="max-w-lg">
                   <Compare />
                 </AppShell>
               }
             />
-
             <Route
               path="/compare/results"
               element={
-                <AppShell
-                  topbarProps={{
-                    showBack: true,
-                    backTo: "/compare",
-                    right: <TopRightActions />,
-                    tagline: "Compare. Choose. Ride.",
-                  }}
-                >
+                <AppShell header="app" maxWidth="max-w-lg">
                   <CompareResults />
                 </AppShell>
               }
             />
 
-            {/* Profile (includes saved places section) */}
+            {/* Profile + places (merged) */}
             <Route
               path="/profile"
               element={
                 <RequireAuth>
-                  <AppShell
-                    topbarProps={{
-                      showBack: true,
-                      backTo: "/compare",
-                      right: <TopRightActions />,
-                    }}
-                  >
+                  <AppShell header="profile" maxWidth="max-w-lg" padded={false}>
                     <Profile />
                   </AppShell>
                 </RequireAuth>
               }
             />
 
-            {/* Optional: collapse /favourites into profile */}
+            {/* Merge: favourites no longer a page */}
             <Route path="/favourites" element={<Navigate to="/profile" replace />} />
 
             <Route path="*" element={<NotFound />} />
