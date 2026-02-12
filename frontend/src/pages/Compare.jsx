@@ -242,7 +242,7 @@ export default function Compare() {
             <img
               src={logo}
               alt="RideCompare"
-              className={`h-8 ${isDark ? "logo-dark-invert" : ""}`}
+              className={`!h-8 !w-auto object-contain ${isDark ? "logo-dark-invert" : ""}`}
             />
           </button>
 

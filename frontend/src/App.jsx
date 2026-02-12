@@ -16,9 +16,12 @@ import ThemeToggle from "./components/ThemeToggle";
 
 function WithThemeToggle({ children }) {
   return (
-    <div className="min-h-screen">
-      <div className="fixed right-4 top-4 z-[60]">
-        <ThemeToggle />
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Subtle top-right toggle inside layout grid */}
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-end pt-4">
+          <ThemeToggle />
+        </div>
       </div>
       {children}
     </div>
@@ -32,9 +35,10 @@ export default function App() {
         <AuthProvider>
           <Toaster position="top-center" />
           <Routes>
-            {/* Public */}
+            {/* Splash */}
             <Route path="/" element={<Splash />} />
 
+            {/* Auth */}
             <Route
               path="/auth"
               element={
@@ -44,11 +48,10 @@ export default function App() {
               }
             />
 
-            {/* Keep old auth routes working, but funnel them into /auth */}
             <Route path="/login" element={<Navigate to="/auth" replace />} />
             <Route path="/register" element={<Navigate to="/auth" replace />} />
 
-            {/* Public compare */}
+            {/* Compare */}
             <Route
               path="/compare"
               element={
@@ -57,6 +60,7 @@ export default function App() {
                 </WithThemeToggle>
               }
             />
+
             <Route
               path="/compare/results"
               element={
@@ -89,7 +93,7 @@ export default function App() {
               }
             />
 
-            {/* Catch all (no toggle here) */}
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
