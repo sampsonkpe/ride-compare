@@ -163,8 +163,8 @@ export default function LocationInput({
   }, [value?.address, isLoaded, biasCenter.lat, biasCenter.lng]);
 
   const pickIcon = useMemo(() => {
-    if (icon === "pickup") return <CircleDot className="w-5 h-5 text-blue-500" />;
-    return <MapPin className="w-5 h-5 text-red-500" />;
+    if (icon === "pickup") return <CircleDot className="w-5 h-5 text-primary" />;
+    return <MapPin className="w-5 h-5 text-destructive" />;
   }, [icon]);
 
   const commitSelection = (prediction) => {
@@ -190,7 +190,6 @@ export default function LocationInput({
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
 
-        // set coords immediately
         onChange({ address: prediction.description, lat, lng });
 
         setBiasCenter({ lat, lng });
@@ -264,7 +263,6 @@ export default function LocationInput({
 
         setBiasCenter({ lat: latitude, lng: longitude });
 
-        // set coords immediately with safe text (never "Current location")
         onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
 
         geocoderRef.current?.geocode(
@@ -305,7 +303,7 @@ export default function LocationInput({
             type="button"
             onClick={useCurrentLocation}
             disabled={isLocating}
-            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:opacity-90 transition disabled:opacity-50"
           >
             <Crosshair className="w-4 h-4" />
             {isLocating ? "Locating..." : "Use current location"}
@@ -314,9 +312,8 @@ export default function LocationInput({
       )}
 
       <div
-        className={`relative flex items-center rounded-lg border bg-background/40 transition ${
-          isFocused ? "border-blue-600" : "border-border/10 hover:border-border/20"
-        }`}
+        className={`relative flex items-center rounded-xl border bg-card transition
+          ${isFocused ? "border-ring" : "border-border hover:border-border"}`}
       >
         <div className="pl-4 pr-2">{pickIcon}</div>
 
@@ -341,7 +338,7 @@ export default function LocationInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 px-2 py-4 bg-transparent text-foreground placeholder:text-muted-foreground-500 focus:outline-none"
+          className="flex-1 h-11 px-2 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
           type="text"
         />
 
@@ -349,7 +346,8 @@ export default function LocationInput({
           <button
             type="button"
             onClick={clearValue}
-            className="px-3 text-gray-300 hover:text-foreground"
+            className="h-11 px-3 inline-flex items-center text-muted-foreground hover:text-foreground transition
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Clear"
           >
             <X className="w-4 h-4" />
@@ -358,21 +356,20 @@ export default function LocationInput({
       </div>
 
       {showSuggestions && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-gray-950 border border-border/10 rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+        <div className="absolute z-50 w-full mt-2 bg-popover border border-border rounded-xl overflow-hidden shadow-card">
           {predictions.slice(0, 5).map((p, idx) => (
             <button
               key={p.place_id}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => commitSelection(p)}
-              className={`w-full text-left px-4 py-3 text-sm transition ${
-                selectedIndex === idx ? "bg-white/10" : "hover:bg-white/5"
-              }`}
+              className={`w-full text-left px-4 py-3 text-sm transition
+                ${selectedIndex === idx ? "bg-accent" : "hover:bg-accent"}`}
             >
               <div className="text-foreground truncate">
                 {p.structured_formatting?.main_text || p.description}
               </div>
-              <div className="text-gray-400 text-xs truncate">
+              <div className="text-muted-foreground text-xs truncate">
                 {p.structured_formatting?.secondary_text || ""}
               </div>
             </button>

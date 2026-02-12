@@ -59,12 +59,10 @@ function extractErrorMessage(err) {
   const status = err?.response?.status;
   const data = err?.response?.data;
 
-  // Prefer explicit backend messages first
   if (data?.detail) return String(data.detail);
   if (data?.error) return String(data.error);
   if (typeof data === "string" && data.trim()) return data;
 
-  // If it’s an object (e.g. serializer errors), stringify it nicely
   if (data && typeof data === "object") {
     try {
       return `Request failed (${status}): ${JSON.stringify(data)}`;
@@ -73,7 +71,6 @@ function extractErrorMessage(err) {
     }
   }
 
-  // Axios network error etc.
   if (err?.message) return err.message;
 
   return "Failed to compare rides";
@@ -93,7 +90,6 @@ export default function Compare() {
   const location = useLocation();
   const pickupRef = useRef(null);
 
-  /* Prefill from favourites */
   useEffect(() => {
     const incomingPickup = location.state?.pickup;
     const incomingDropoff = location.state?.dropoff;
@@ -190,6 +186,11 @@ export default function Compare() {
   };
 
   const headerRight = useMemo(() => {
+    const ghostBtn =
+      "inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-medium " +
+      "text-muted-foreground hover:text-foreground hover:bg-accent transition " +
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
     if (user) {
       return (
         <>
@@ -199,7 +200,7 @@ export default function Compare() {
 
           <button
             onClick={() => navigate("/profile")}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
+            className={ghostBtn}
             type="button"
           >
             <UserCog className="h-4 w-4" />
@@ -211,7 +212,7 @@ export default function Compare() {
               await logout();
               navigate("/auth");
             }}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
+            className={ghostBtn}
             type="button"
           >
             <LogOut className="h-4 w-4" />
@@ -222,11 +223,7 @@ export default function Compare() {
     }
 
     return (
-      <button
-        onClick={() => navigate("/auth")}
-        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
-        type="button"
-      >
+      <button onClick={() => navigate("/auth")} className={ghostBtn} type="button">
         <LogIn className="h-4 w-4" />
         Sign in
       </button>
@@ -235,11 +232,11 @@ export default function Compare() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/60">
-        <div className="max-w-4xl mx-auto p-4 flex justify-between items-center">
+      <header className="bg-card border-b border-border">
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <button
             onClick={() => navigate("/compare")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             type="button"
           >
             <img
@@ -249,19 +246,21 @@ export default function Compare() {
             />
           </button>
 
-          <div className="flex items-center gap-4">{headerRight}</div>
+          <div className="flex items-center gap-2 sm:gap-3">{headerRight}</div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-6">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold mb-3">Compare rides instantly</h1>
-          <p className="text-muted-foreground text-lg">
+      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center mb-8 sm:mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3">
+            Compare rides instantly
+          </h1>
+          <p className="text-muted-foreground text-base sm:text-lg">
             Find the best price across all platforms
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card space-y-4">
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-2">
               Pickup
@@ -293,7 +292,10 @@ export default function Compare() {
           <button
             onClick={handleCompare}
             disabled={loading}
-            className="w-full py-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-95 disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold
+              bg-primary text-primary-foreground hover:opacity-90 transition
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+              disabled:opacity-50 disabled:pointer-events-none"
             type="button"
           >
             {loading ? "Finding rides…" : "Compare Rides"}

@@ -226,30 +226,49 @@ export default function Favourites() {
     navigate("/compare", { state: { dropoff: { address, lat: lat ?? null, lng: lng ?? null } } });
   };
 
+  const primaryBtn =
+    "inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold " +
+    "bg-primary text-primary-foreground hover:opacity-90 transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+    "disabled:opacity-50 disabled:pointer-events-none";
+
+  const secondaryBtn =
+    "inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold " +
+    "bg-secondary text-secondary-foreground border border-border hover:opacity-90 transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+    "disabled:opacity-50 disabled:pointer-events-none";
+
+  const ghostIconBtn =
+    "h-10 w-10 inline-flex items-center justify-center rounded-xl text-muted-foreground " +
+    "hover:text-foreground hover:bg-accent transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4 py-10">
         <p className="text-muted-foreground">Loading favourites…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className={ghostIconBtn}
+              aria-label="Back to profile"
+              title="Back"
+            >
               ←
             </button>
             <h2 className="text-2xl font-bold">Favourites</h2>
           </div>
 
-          <button
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold hover:opacity-95"
-            type="button"
-            onClick={openAddModal}
-          >
+          <button className={primaryBtn} type="button" onClick={openAddModal}>
             <Plus className="h-4 w-4" />
             Add
           </button>
@@ -267,7 +286,10 @@ export default function Favourites() {
               const addressText = extractAddress(fav) || "—";
 
               return (
-                <div key={fav.id} className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
+                <div
+                  key={fav.id}
+                  className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-card"
+                >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -277,10 +299,10 @@ export default function Favourites() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openEditModal(fav)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className={ghostIconBtn}
                         type="button"
                         aria-label="Edit favourite"
                         title="Edit"
@@ -290,7 +312,11 @@ export default function Favourites() {
 
                       <button
                         onClick={() => handleDelete(fav.id)}
-                        className="text-muted-foreground hover:text-destructive"
+                        className={[
+                          "h-10 w-10 inline-flex items-center justify-center rounded-xl transition",
+                          "text-muted-foreground hover:text-destructive hover:bg-accent",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        ].join(" ")}
                         type="button"
                         aria-label="Delete favourite"
                         title="Delete"
@@ -300,19 +326,11 @@ export default function Favourites() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => useAsPickup(fav)}
-                      className="flex-1 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-95"
-                      type="button"
-                    >
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button onClick={() => useAsPickup(fav)} className={`${primaryBtn} flex-1`} type="button">
                       Use as pickup
                     </button>
-                    <button
-                      onClick={() => useAsDropoff(fav)}
-                      className="flex-1 px-4 py-2 rounded-xl bg-secondary text-secondary-foreground border border-border font-semibold hover:opacity-95"
-                      type="button"
-                    >
+                    <button onClick={() => useAsDropoff(fav)} className={`${secondaryBtn} flex-1`} type="button">
                       Use as dropoff
                     </button>
                   </div>
@@ -321,19 +339,20 @@ export default function Favourites() {
             })}
           </div>
         )}
-      </div>
+      </main>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8" role="dialog" aria-modal="true">
+          {/* Solid overlay (no glass / no translucency tricks) */}
           <button
-            className="absolute inset-0 bg-background/70"
+            className="absolute inset-0 bg-background"
             onClick={closeModal}
             type="button"
             aria-label="Close modal overlay"
           />
 
           <form
-            className="relative w-full max-w-xl rounded-2xl border border-border bg-card shadow-lg"
+            className="relative w-full max-w-xl rounded-2xl border border-border bg-card shadow-card"
             onSubmit={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -346,7 +365,7 @@ export default function Favourites() {
               <h3 className="text-lg font-semibold">{mode === "edit" ? "Edit favourite" : "Add favourite"}</h3>
               <button
                 onClick={closeModal}
-                className="text-muted-foreground hover:text-foreground"
+                className={ghostIconBtn}
                 type="button"
                 aria-label="Close"
                 disabled={saving}
@@ -371,10 +390,11 @@ export default function Favourites() {
                         type="button"
                         onClick={() => setType(item.key)}
                         className={[
-                          "rounded-xl border px-3 py-3 inline-flex items-center justify-center gap-2 text-sm font-semibold transition",
+                          "rounded-xl border h-11 px-3 inline-flex items-center justify-center gap-2 text-sm font-semibold transition",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           active
                             ? "border-ring bg-accent text-foreground"
-                            : "border-border bg-secondary text-secondary-foreground hover:opacity-95",
+                            : "border-border bg-secondary text-secondary-foreground hover:opacity-90",
                         ].join(" ")}
                         disabled={saving}
                       >
@@ -392,7 +412,8 @@ export default function Favourites() {
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={defaultLabelForType || "e.g. Gym"}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                  className="h-11 w-full rounded-xl border border-border bg-card px-4 text-foreground placeholder:text-muted-foreground
+                    outline-none focus:ring-2 focus:ring-ring"
                   disabled={saving}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">For Home/Work, you can leave this empty.</p>
@@ -412,20 +433,11 @@ export default function Favourites() {
             </div>
 
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 rounded-xl bg-secondary text-secondary-foreground border border-border font-semibold hover:opacity-95"
-                type="button"
-                disabled={saving}
-              >
+              <button onClick={closeModal} className={secondaryBtn} type="button" disabled={saving}>
                 Cancel
               </button>
 
-              <button
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-60 hover:opacity-95"
-                type="submit"
-                disabled={saving}
-              >
+              <button className={primaryBtn} type="submit" disabled={saving}>
                 <Save className="h-4 w-4" />
                 {saving ? "Saving..." : "Save"}
               </button>

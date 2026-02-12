@@ -130,15 +130,26 @@ export default function CompareResults() {
     return copy;
   }, [rides, sortBy]);
 
+  const primaryBtn =
+    "inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold " +
+    "bg-primary text-primary-foreground hover:opacity-90 transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+    "disabled:opacity-50 disabled:pointer-events-none";
+
+  const ghostBtn =
+    "inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-medium " +
+    "text-muted-foreground hover:text-foreground hover:bg-accent transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   if (error) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md text-center">
           <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">{error}</p>
+          <p className="text-muted-foreground mb-5">{error}</p>
           <button
             onClick={() => navigate("/compare")}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-95"
+            className={primaryBtn}
             type="button"
           >
             Go Back
@@ -148,32 +159,26 @@ export default function CompareResults() {
     );
   }
 
-  const currentSortLabel = sortBy === "eta" ? "Sort by ETA" : "Sort by Price";
-
   return (
-    <div className="min-h-screen bg-background text-foreground p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6 flex justify-between items-start gap-4">
-          <button
-            onClick={() => navigate("/compare")}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
-            type="button"
-          >
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <button onClick={() => navigate("/compare")} className={ghostBtn} type="button">
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
 
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 h-11 shadow-card">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-sm text-foreground outline-none appearance-none pr-6"
+              className="bg-transparent text-sm text-foreground outline-none appearance-none pr-7"
               aria-label="Sort results"
             >
               <option value="eta">Sort by ETA</option>
               <option value="price">Sort by Price</option>
             </select>
-            <ChevronDown className="h-4 w-4 text-muted-foreground -ml-5 pointer-events-none" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground -ml-6 pointer-events-none" />
           </div>
         </div>
 
@@ -200,14 +205,19 @@ export default function CompareResults() {
             const deepLink = PROVIDER_DEEPLINK[providerKey] || "https://ridecompare.app";
 
             return (
-              <div key={index} className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+              <div
+                key={index}
+                className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-card"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     {logo ? (
                       <img
                         src={logo}
                         alt={`${company} logo`}
-                        className={`h-14 w-auto object-contain ${providerKey === "UBER" ? "logo-dark-invert" : ""}`}
+                        className={`h-14 w-auto object-contain ${
+                          providerKey === "UBER" ? "logo-dark-invert" : ""
+                        }`}
                       />
                     ) : (
                       <div className="text-sm text-muted-foreground">{company}</div>
@@ -228,7 +238,7 @@ export default function CompareResults() {
                   href={deepLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full mt-4 py-3 bg-primary text-primary-foreground rounded-xl font-semibold inline-flex justify-center hover:opacity-95"
+                  className={`${primaryBtn} w-full mt-4`}
                 >
                   Continue in App
                 </a>
@@ -236,7 +246,7 @@ export default function CompareResults() {
             );
           })}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
