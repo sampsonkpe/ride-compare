@@ -9,23 +9,13 @@ import Compare from "./pages/Compare";
 import CompareResults from "./pages/CompareResults";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import Favourites from "./pages/Favourites";
 
 import RequireAuth from "./components/auth/RequireAuth";
 import ThemeToggle from "./components/ThemeToggle";
+import AppShell from "./components/layout/AppShell";
 
-function WithThemeToggle({ children }) {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Subtle top-right toggle inside layout grid */}
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-end pt-4">
-          <ThemeToggle />
-        </div>
-      </div>
-      {children}
-    </div>
-  );
+function TopRightActions() {
+  return <ThemeToggle />;
 }
 
 export default function App() {
@@ -35,19 +25,26 @@ export default function App() {
         <AuthProvider>
           <Toaster position="top-center" />
           <Routes>
-            {/* Splash */}
+            {/* Splash: no topbar */}
             <Route path="/" element={<Splash />} />
 
-            {/* Auth */}
+            {/* Auth: topbar with back */}
             <Route
               path="/auth"
               element={
-                <WithThemeToggle>
+                <AppShell
+                  center
+                  topbarProps={{
+                    showBack: true,
+                    right: <TopRightActions />,
+                  }}
+                >
                   <Auth />
-                </WithThemeToggle>
+                </AppShell>
               }
             />
 
+            {/* Old routes redirect */}
             <Route path="/login" element={<Navigate to="/auth" replace />} />
             <Route path="/register" element={<Navigate to="/auth" replace />} />
 
@@ -55,45 +52,54 @@ export default function App() {
             <Route
               path="/compare"
               element={
-                <WithThemeToggle>
+                <AppShell
+                  topbarProps={{
+                    right: <TopRightActions />,
+                    tagline: "Compare. Choose. Ride.",
+                  }}
+                >
                   <Compare />
-                </WithThemeToggle>
+                </AppShell>
               }
             />
 
             <Route
               path="/compare/results"
               element={
-                <WithThemeToggle>
+                <AppShell
+                  topbarProps={{
+                    showBack: true,
+                    backTo: "/compare",
+                    right: <TopRightActions />,
+                    tagline: "Compare. Choose. Ride.",
+                  }}
+                >
                   <CompareResults />
-                </WithThemeToggle>
+                </AppShell>
               }
             />
 
-            {/* Protected */}
+            {/* Profile (includes saved places section) */}
             <Route
               path="/profile"
               element={
                 <RequireAuth>
-                  <WithThemeToggle>
+                  <AppShell
+                    topbarProps={{
+                      showBack: true,
+                      backTo: "/compare",
+                      right: <TopRightActions />,
+                    }}
+                  >
                     <Profile />
-                  </WithThemeToggle>
+                  </AppShell>
                 </RequireAuth>
               }
             />
 
-            <Route
-              path="/favourites"
-              element={
-                <RequireAuth>
-                  <WithThemeToggle>
-                    <Favourites />
-                  </WithThemeToggle>
-                </RequireAuth>
-              }
-            />
+            {/* Optional: collapse /favourites into profile */}
+            <Route path="/favourites" element={<Navigate to="/profile" replace />} />
 
-            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
