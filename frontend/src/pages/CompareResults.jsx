@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, AlertTriangle, ChevronDown } from "lucide-react";
+import { Clock, AlertTriangle, ChevronDown } from "lucide-react";
 
 import uberLogo from "../assets/uberlogo.png";
 import yangoLogo from "../assets/yangologo.png";
@@ -63,17 +63,35 @@ function typeOnlyLabel(ride) {
   return s;
 }
 
-export default function CompareResults() {
+export default function CompareResults({
+  embedded = false,
+  rides: ridesProp,
+  pickup: pickupProp,
+  dropoff: dropoffProp,
+}) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [rides, setRides] = useState([]);
-  const [pickup, setPickup] = useState(null);
-  const [dropoff, setDropoff] = useState(null);
+  const [rides, setRides] = useState(Array.isArray(ridesProp) ? ridesProp : []);
+  const [pickup, setPickup] = useState(pickupProp || null);
+  const [dropoff, setDropoff] = useState(dropoffProp || null);
   const [error, setError] = useState("");
-  const [sortBy, setSortBy] = useState("eta");
+  const [sortBy, setSortBy] = useState("price");
 
   useEffect(() => {
+    if (embedded) {
+      setRides(Array.isArray(ridesProp) ? ridesProp : []);
+      setPickup(pickupProp || null);
+      setDropoff(dropoffProp || null);
+      setError(
+        Array.isArray(ridesProp) && ridesProp.length
+          ? ""
+          : "No ride data available. Please run a new compare."
+      );
+      return;
+    }
+
+    // page-mode fallback: location.state -> localStorage
     const state = location.state;
 
     if (state?.rides && Array.isArray(state.rides)) {
@@ -81,6 +99,19 @@ export default function CompareResults() {
       setPickup(state.pickup || null);
       setDropoff(state.dropoff || null);
       setError("");
+
+      // persist last results for refresh
+      try {
+        localStorage.setItem(
+          LAST_RESULTS_KEY,
+          JSON.stringify({
+            rides: state.rides,
+            pickup: state.pickup || null,
+            dropoff: state.dropoff || null,
+          })
+        );
+      } catch {}
+
       return;
     }
 
@@ -103,13 +134,13 @@ export default function CompareResults() {
     } catch {
       setError("No ride data available. Please run a new compare.");
     }
-  }, [location.state]);
+  }, [embedded, ridesProp, pickupProp, dropoffProp, location.state]);
 
   const pickupText = pickup?.address || "Pickup";
   const dropoffText = dropoff?.address || "Dropoff";
 
   const sortedRides = useMemo(() => {
-    const copy = [...rides];
+    const copy = [...(rides || [])];
     copy.sort((a, b) => {
       if (sortBy === "price") {
         const ap = toNumber(a?.price);
@@ -141,17 +172,111 @@ export default function CompareResults() {
     "text-muted-foreground hover:text-foreground hover:bg-accent transition " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+  // ---------- Embedded layout (bottom sheet) ----------
+  if (embedded) {
+    return (
+      <div className="w-full">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <div className="text-xs text-muted-foreground">Route</div>
+            <div className="text-sm font-semibold truncate">
+              {pickupText} <span className="mx-2">→</span> {dropoffText}
+            </div>
+          </div>
+
+          <div className="relative inline-flex items-center">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="appearance-none bg-card border border-border rounded-lg px-3 py-2 pr-8 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Sort results"
+            >
+              <option value="price">Sort by Price</option>
+              <option value="eta">Sort by ETA</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
+        </div>
+
+        {error ? (
+          <div className="py-10 text-center">
+            <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
+            <p className="text-muted-foreground mb-5">{error}</p>
+            <button onClick={() => navigate("/compare")} className={primaryBtn} type="button">
+              Go Back
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {sortedRides.map((ride, index) => {
+              const providerKey = normalizeProvider(ride?.provider);
+              const company = providerDisplayName(providerKey);
+
+              const logo = PROVIDER_LOGO[providerKey];
+              const typeOnly = typeOnlyLabel(ride);
+              const rideTypeFull = `${company} ${typeOnly}`.trim();
+
+              const priceText = formatMoneyGHS(ride?.price);
+              const etaNum = toNumber(ride?.eta_minutes);
+              const etaText = etaNum == null ? "--" : `${etaNum}`;
+
+              const deepLink = PROVIDER_DEEPLINK[providerKey] || "https://ridecompare.app";
+
+              return (
+                <div
+                  key={index}
+                  className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-card"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt={`${company} logo`}
+                          className={`h-10 sm:h-12 w-auto object-contain ${
+                            providerKey === "UBER" ? "logo-dark-invert" : ""
+                          }`}
+                        />
+                      ) : (
+                        <div className="text-sm text-muted-foreground">{company}</div>
+                      )}
+                      <div className="mt-2 text-xs text-muted-foreground">{rideTypeFull}</div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-3xl font-bold leading-tight">{priceText}</div>
+                      <div className="mt-1 inline-flex items-center gap-1 text-muted-foreground text-sm justify-end">
+                        <Clock className="h-4 w-4" />
+                        {etaText} min
+                      </div>
+                    </div>
+                  </div>
+
+                  <a
+                    href={deepLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${primaryBtn} w-full mt-4`}
+                  >
+                    Continue in App
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------- Page layout (fallback) ----------
   if (error) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md text-center">
           <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
           <p className="text-muted-foreground mb-5">{error}</p>
-          <button
-            onClick={() => navigate("/compare")}
-            className={primaryBtn}
-            type="button"
-          >
+          <button onClick={() => navigate("/compare")} className={primaryBtn} type="button">
             Go Back
           </button>
         </div>
@@ -164,21 +289,20 @@ export default function CompareResults() {
       <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <button onClick={() => navigate("/compare")} className={ghostBtn} type="button">
-            <ArrowLeft className="h-4 w-4" />
             Back
           </button>
 
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 h-11 shadow-card">
+          <div className="relative inline-flex items-center">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-sm text-foreground outline-none appearance-none pr-7"
+              className="appearance-none bg-card border border-border rounded-lg px-3 py-2 pr-8 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Sort results"
             >
-              <option value="eta">Sort by ETA</option>
               <option value="price">Sort by Price</option>
+              <option value="eta">Sort by ETA</option>
             </select>
-            <ChevronDown className="h-4 w-4 text-muted-foreground -ml-6 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>
         </div>
 
@@ -205,10 +329,7 @@ export default function CompareResults() {
             const deepLink = PROVIDER_DEEPLINK[providerKey] || "https://ridecompare.app";
 
             return (
-              <div
-                key={index}
-                className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-card"
-              >
+              <div key={index} className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-card">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     {logo ? (
@@ -234,12 +355,7 @@ export default function CompareResults() {
                   </div>
                 </div>
 
-                <a
-                  href={deepLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`${primaryBtn} w-full mt-4`}
-                >
+                <a href={deepLink} target="_blank" rel="noreferrer" className={`${primaryBtn} w-full mt-4`}>
                   Continue in App
                 </a>
               </div>

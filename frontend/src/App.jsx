@@ -44,14 +44,7 @@ export default function App() {
                 </AppShell>
               }
             />
-            <Route
-              path="/compare/results"
-              element={
-                <AppShell header="app" maxWidth="max-w-lg">
-                  <CompareResults />
-                </AppShell>
-              }
-            />
+            <Route path="/compare/results" element={<Navigate to="/compare" replace />} />
 
             {/* Profile + places (merged) */}
             <Route

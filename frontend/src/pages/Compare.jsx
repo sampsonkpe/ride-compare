@@ -8,6 +8,10 @@ import logo from "../assets/ridecomparelogo.png";
 import LocationInput from "../components/rides/LocationInput";
 import { LogIn, LogOut, UserCog } from "lucide-react";
 
+// NEW
+import BottomSheet from "../components/overlays/BottomSheet";
+import CompareResults from "./CompareResults";
+
 function loadGoogleMapsScript() {
   const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
@@ -81,6 +85,14 @@ export default function Compare() {
   const [dropoff, setDropoff] = useState({ address: "", lat: null, lng: null });
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+
+  // NEW: sheet state
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetData, setSheetData] = useState({
+    rides: [],
+    pickup: null,
+    dropoff: null,
+  });
 
   const { user, logout } = useContext(AuthContext);
   const themeCtx = useContext(ThemeContext);
@@ -167,9 +179,13 @@ export default function Compare() {
 
       const data = await ridesService.compareRides(pickupFinal, dropoffFinal);
 
-      navigate("/compare/results", {
-        state: { rides: data.rides, pickup: pickupFinal, dropoff: dropoffFinal },
+      // NEW: open bottom sheet instead of navigating
+      setSheetData({
+        rides: Array.isArray(data?.rides) ? data.rides : [],
+        pickup: pickupFinal,
+        dropoff: dropoffFinal,
       });
+      setSheetOpen(true);
 
       if (user) loadHistory();
     } catch (err) {
@@ -229,6 +245,9 @@ export default function Compare() {
       </button>
     );
   }, [user, navigate, logout]);
+
+  const pickupText = sheetData?.pickup?.address || pickup?.address || "Pickup";
+  const dropoffText = sheetData?.dropoff?.address || dropoff?.address || "Dropoff";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -302,6 +321,24 @@ export default function Compare() {
           </button>
         </div>
       </main>
+
+      {/* Bottom pull-up sheet (collapsed when opened) */}
+      <BottomSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Available rides"
+        subtitle={`${pickupText} → ${dropoffText}`}
+        initialSnap={0}
+        snapPoints={[0.18, 0.58, 0.92]}
+      >
+
+        <CompareResults
+          embedded
+          rides={sheetData.rides}
+          pickup={sheetData.pickup}
+          dropoff={sheetData.dropoff}
+        />
+      </BottomSheet>
     </div>
   );
 }
