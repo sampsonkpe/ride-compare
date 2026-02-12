@@ -55,6 +55,30 @@ async function geocodeAddress(address) {
   });
 }
 
+function extractErrorMessage(err) {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+
+  // Prefer explicit backend messages first
+  if (data?.detail) return String(data.detail);
+  if (data?.error) return String(data.error);
+  if (typeof data === "string" && data.trim()) return data;
+
+  // If it’s an object (e.g. serializer errors), stringify it nicely
+  if (data && typeof data === "object") {
+    try {
+      return `Request failed (${status}): ${JSON.stringify(data)}`;
+    } catch {
+      return `Request failed (${status})`;
+    }
+  }
+
+  // Axios network error etc.
+  if (err?.message) return err.message;
+
+  return "Failed to compare rides";
+}
+
 export default function Compare() {
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
   const [dropoff, setDropoff] = useState({ address: "", lat: null, lng: null });
@@ -62,7 +86,8 @@ export default function Compare() {
   const [history, setHistory] = useState([]);
 
   const { user, logout } = useContext(AuthContext);
-  const { isDark } = useContext(ThemeContext);
+  const themeCtx = useContext(ThemeContext);
+  const isDark = themeCtx?.isDark;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,8 +98,20 @@ export default function Compare() {
     const incomingPickup = location.state?.pickup;
     const incomingDropoff = location.state?.dropoff;
 
-    if (incomingPickup?.address) setPickup(incomingPickup);
-    if (incomingDropoff?.address) setDropoff(incomingDropoff);
+    if (incomingPickup?.address) {
+      setPickup({
+        address: incomingPickup.address,
+        lat: incomingPickup.lat ?? null,
+        lng: incomingPickup.lng ?? null,
+      });
+    }
+    if (incomingDropoff?.address) {
+      setDropoff({
+        address: incomingDropoff.address,
+        lat: incomingDropoff.lat ?? null,
+        lng: incomingDropoff.lng ?? null,
+      });
+    }
 
     if (incomingPickup || incomingDropoff) {
       navigate("/compare", { replace: true, state: null });
@@ -108,11 +145,14 @@ export default function Compare() {
     const coords = await geocodeAddress(address);
     if (!coords) return null;
 
-    return { address, lat: coords.lat, lng: coords.lng };
+    return { address, lat: Number(coords.lat), lng: Number(coords.lng) };
   };
 
   const handleCompare = async () => {
-    if (!pickup.address || !dropoff.address) {
+    const pickupAddress = pickup?.address?.trim();
+    const dropoffAddress = dropoff?.address?.trim();
+
+    if (!pickupAddress || !dropoffAddress) {
       toast.error("Please enter pickup and dropoff locations");
       return;
     }
@@ -120,12 +160,12 @@ export default function Compare() {
     setLoading(true);
     try {
       const [pickupFinal, dropoffFinal] = await Promise.all([
-        ensureCoords(pickup),
-        ensureCoords(dropoff),
+        ensureCoords({ ...pickup, address: pickupAddress }),
+        ensureCoords({ ...dropoff, address: dropoffAddress }),
       ]);
 
       if (!pickupFinal || !dropoffFinal) {
-        toast.error("Please select a suggested place");
+        toast.error("Please select a suggested place so we can get coordinates.");
         return;
       }
 
@@ -137,7 +177,13 @@ export default function Compare() {
 
       if (user) loadHistory();
     } catch (err) {
-      toast.error("Failed to compare rides");
+      console.error("Compare failed:", {
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+
+      toast.error(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -227,9 +273,7 @@ export default function Compare() {
               icon="pickup"
               showCurrentLocation
               inputRef={pickupRef}
-              onLocationError={() =>
-                toast.error("Location access unavailable")
-              }
+              onLocationError={() => toast.error("Location access unavailable")}
             />
           </div>
 
@@ -242,9 +286,7 @@ export default function Compare() {
               onChange={setDropoff}
               placeholder="Where are you going?"
               icon="dropoff"
-              onLocationError={() =>
-                toast.error("Location search unavailable")
-              }
+              onLocationError={() => toast.error("Location search unavailable")}
             />
           </div>
 
