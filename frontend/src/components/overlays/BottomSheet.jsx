@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X, Plus } from "lucide-react";
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -8,8 +9,9 @@ function clamp(n, min, max) {
 export default function BottomSheet({
   open,
   onClose,
-  title,
-  subtitle,
+  pickupText = "Pickup",
+  dropoffText = "Dropoff",
+  onAddStop,
   children,
   snapPoints = [0.18, 0.66, 0.92],
   initialSnap = 1,
@@ -122,6 +124,10 @@ export default function BottomSheet({
 
   if (!open) return null;
 
+  const iconBtn =
+    "p-2 rounded-full hover:bg-muted transition-colors " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex }}>
       {/* Backdrop */}
@@ -138,27 +144,12 @@ export default function BottomSheet({
         }}
       />
 
-      {/* Centered container to match app width */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: "flex",
-          justifyContent: "center",
-          paddingLeft: 16,
-          paddingRight: 16,
-          pointerEvents: "none",
-        }}
-      >
-        {/* Sheet */}
+      {/* Sheet wrapper (centred width) */}
+      <div className={`absolute left-0 right-0 bottom-0 mx-auto w-full ${maxWidthClass} px-4`}>
         <div
           role="dialog"
           aria-modal="true"
-          className={["w-full", maxWidthClass].join(" ")}
           style={{
-            pointerEvents: "auto",
             height: sheetHeightPx,
             transform: `translateY(${translatePx}px)`,
             transition: isDragging ? "none" : "transform 220ms ease-out",
@@ -171,7 +162,7 @@ export default function BottomSheet({
             borderTop: "1px solid hsl(var(--border))",
           }}
         >
-          {/* Handle/Header (drag area) */}
+          {/* Handle / Drag area */}
           <div
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -180,7 +171,7 @@ export default function BottomSheet({
             onPointerMove={(e) => moveDrag(e.clientY)}
             onPointerUp={endDrag}
             style={{
-              padding: "10px 16px 10px",
+              padding: "10px 12px 10px",
               userSelect: "none",
               cursor: "grab",
               borderBottom: "1px solid hsl(var(--border))",
@@ -196,20 +187,35 @@ export default function BottomSheet({
               }}
             />
 
-            {title ? (
-              <div style={{ marginTop: 10 }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>{title}</div>
-                {subtitle ? (
-                  <div style={{ marginTop: 4, opacity: 0.75, fontSize: 12 }}>{subtitle}</div>
-                ) : null}
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button type="button" onClick={onClose} className={iconBtn} aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="min-w-0 flex-1 text-center text-sm font-semibold truncate">
+                <span className="text-foreground">{pickupText}</span>{" "}
+                <span className="text-muted-foreground">→</span>{" "}
+                <span className="text-primary">{dropoffText}</span>
               </div>
-            ) : null}
+
+              <button
+                type="button"
+                onClick={() => onAddStop?.()}
+                className={iconBtn}
+                aria-label="Add stop"
+                disabled={typeof onAddStop !== "function"}
+                title={typeof onAddStop === "function" ? "Add stop" : ""}
+                style={typeof onAddStop === "function" ? undefined : { opacity: 0.4, cursor: "default" }}
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
           <div
             style={{
-              height: "calc(100% - 74px)",
+              height: "calc(100% - 86px)",
               overflowY: "auto",
               padding: "12px 16px 18px",
             }}

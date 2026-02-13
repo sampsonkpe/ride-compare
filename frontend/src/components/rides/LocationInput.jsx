@@ -10,10 +10,8 @@ function loadGoogleMapsScript() {
 
     const existing = document.getElementById("google-maps-script");
     if (existing) {
-      const onLoad = () => resolve();
-      const onErr = () => reject(new Error("Failed to load Google Maps"));
-      existing.addEventListener("load", onLoad, { once: true });
-      existing.addEventListener("error", onErr, { once: true });
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")));
       return;
     }
 
@@ -34,12 +32,9 @@ function looksLikePlusCode(text = "") {
 
 function getArea(result) {
   const comps = result?.address_components || [];
-  const sublocality = comps.find(
-    (c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
-  )?.long_name;
+  const sublocality = comps.find((c) => c.types.includes("sublocality") || c.types.includes("sublocality_level_1"))?.long_name;
   const locality = comps.find((c) => c.types.includes("locality"))?.long_name;
   const admin = comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name;
-
   return sublocality || locality || admin || "Accra";
 }
 
@@ -50,7 +45,6 @@ function getPlaceName(result) {
 
   const first = (result?.formatted_address || "").split(",")[0]?.trim();
   if (first && looksLikePlusCode(first)) return poi || premise || "";
-
   return poi || premise || "";
 }
 
@@ -129,19 +123,20 @@ export default function LocationInput({
     }
 
     const t = setTimeout(() => {
-      const location =
-        window.google?.maps?.LatLng
-          ? new window.google.maps.LatLng(biasCenter.lat, biasCenter.lng)
-          : undefined;
+      const location = window.google?.maps?.LatLng
+        ? new window.google.maps.LatLng(biasCenter.lat, biasCenter.lng)
+        : undefined;
 
       autocompleteServiceRef.current?.getPlacePredictions(
         {
           input,
           ...(location ? { location, radius: biasRadiusMeters } : {}),
         },
-        (preds) => setPredictions(preds || [])
+        (preds) => {
+          setPredictions(preds || []);
+        }
       );
-    }, 260);
+    }, 250);
 
     return () => clearTimeout(t);
   }, [value?.address, isLoaded, biasCenter.lat, biasCenter.lng]);
@@ -174,7 +169,6 @@ export default function LocationInput({
 
       geocoderRef.current?.geocode({ location: { lat, lng } }, (results, geoStatus) => {
         const r0 = results?.[0];
-
         if (geoStatus !== "OK" || !r0) {
           const firstChunk = (prediction.description.split(",")[0] || "").trim();
           const safe = looksLikePlusCode(firstChunk) ? "Unnamed Road, Accra" : prediction.description;
@@ -185,7 +179,6 @@ export default function LocationInput({
         const normalized = getShortAddress(r0);
         const normalizedFirst = (normalized.split(",")[0] || "").trim();
         const finalLabel = looksLikePlusCode(normalizedFirst) ? `Unnamed Road, ${getArea(r0)}` : normalized;
-
         onChange({ address: finalLabel, lat, lng });
       });
     });
@@ -193,6 +186,7 @@ export default function LocationInput({
 
   const handleKeyDown = (e) => {
     if (!showSuggestions || predictions.length === 0) return;
+
     const visible = predictions.slice(0, 5);
 
     if (e.key === "ArrowDown") {
@@ -227,6 +221,7 @@ export default function LocationInput({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
+
         setBiasCenter({ lat: latitude, lng: longitude });
 
         onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
@@ -256,31 +251,31 @@ export default function LocationInput({
 
   return (
     <div className="relative">
-      {(label || showCurrentLocation) ? (
-        <div className="flex items-center justify-between mb-2 gap-3">
-          <div className="text-xs font-extrabold text-muted-foreground">{label || ""}</div>
-
+      {/* Label row: label left, Use current location right */}
+      {(label || showCurrentLocation) && (
+        <div className="flex items-center justify-between gap-3 mb-2">
+          {label ? <label className="block text-sm font-medium text-muted-foreground">{label}</label> : <span />}
           {showCurrentLocation ? (
             <button
               type="button"
               onClick={useCurrentLocation}
               disabled={isLocating}
-              className="inline-flex items-center gap-2 text-xs font-extrabold text-primary/90 hover:text-primary transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:opacity-90 transition disabled:opacity-50"
             >
               <Crosshair className="w-4 h-4" />
               {isLocating ? "Locating..." : "Use current location"}
             </button>
           ) : null}
         </div>
-      ) : null}
+      )}
 
       <div
         className={[
           "relative flex items-center rounded-xl border-2 bg-card transition",
-          isFocused ? "border-primary shadow-card" : "border-border hover:border-muted-foreground/30",
+          isFocused ? "border-ring shadow-card" : "border-border hover:border-muted-foreground/30",
         ].join(" ")}
       >
-        <div className="pl-4 pr-2 shrink-0">{pickIcon}</div>
+        <div className="pl-4 pr-2">{pickIcon}</div>
 
         <input
           ref={inputRef}
@@ -303,25 +298,25 @@ export default function LocationInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 h-11 px-2 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm min-w-0"
+          className="flex-1 h-11 px-2 bg-transparent text-foreground placeholder:text-muted-foreground/80 focus:outline-none"
           type="text"
-          autoComplete="off"
         />
 
         {!!value?.address && (
           <button
             type="button"
             onClick={clearValue}
-            className="p-2 mr-2 rounded-full hover:bg-muted transition"
+            className="h-11 px-3 inline-flex items-center text-muted-foreground hover:text-foreground transition
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Clear"
           >
-            <X className="w-4 h-4 text-muted-foreground" />
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {showSuggestions && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-2xl overflow-hidden shadow-card-hover animate-scale-in">
+        <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl overflow-hidden shadow-card-hover">
           {predictions.slice(0, 5).map((p, idx) => (
             <button
               key={p.place_id}
@@ -333,7 +328,7 @@ export default function LocationInput({
                 selectedIndex === idx ? "bg-muted" : "hover:bg-muted",
               ].join(" ")}
             >
-              <div className="text-foreground truncate font-semibold">
+              <div className="text-foreground truncate">
                 {p.structured_formatting?.main_text || p.description}
               </div>
               <div className="text-muted-foreground text-xs truncate">

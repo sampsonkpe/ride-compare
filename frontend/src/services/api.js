@@ -7,34 +7,41 @@ let accessToken = null;
 let refreshToken = null;
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api",
+  headers: { "Content-Type": "application/json" },
 });
 
 export const setTokens = (access, refresh) => {
   accessToken = access || null;
   refreshToken = refresh || null;
 
-  if (accessToken) {
-    localStorage.setItem(ACCESS_KEY, accessToken);
-    api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-  } else {
-    localStorage.removeItem(ACCESS_KEY);
-    delete api.defaults.headers.common.Authorization;
-  }
+  try {
+    if (accessToken) {
+      localStorage.setItem(ACCESS_KEY, accessToken);
+      api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+    } else {
+      localStorage.removeItem(ACCESS_KEY);
+      delete api.defaults.headers.common.Authorization;
+    }
 
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_KEY, refreshToken);
-  } else {
-    localStorage.removeItem(REFRESH_KEY);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_KEY, refreshToken);
+    } else {
+      localStorage.removeItem(REFRESH_KEY);
+    }
+  } catch {
+    // ignore storage errors
   }
 };
 
 export const loadTokens = () => {
-  accessToken = localStorage.getItem(ACCESS_KEY);
-  refreshToken = localStorage.getItem(REFRESH_KEY);
+  try {
+    accessToken = localStorage.getItem(ACCESS_KEY);
+    refreshToken = localStorage.getItem(REFRESH_KEY);
+  } catch {
+    accessToken = null;
+    refreshToken = null;
+  }
 
   if (accessToken) {
     api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
@@ -49,39 +56,37 @@ export const getRefreshToken = () => refreshToken;
 export const clearTokens = () => {
   accessToken = null;
   refreshToken = null;
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+
+  try {
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  } catch {}
+
   delete api.defaults.headers.common.Authorization;
 };
 
-// Restore tokens immediately on app load
+// Restore tokens immediately on module load
 loadTokens();
 
 // Attach token on every request (safety net)
 api.interceptors.request.use(
   (config) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
+    if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Decide which endpoints REQUIRE auth (API-level)
-// NOTE: Compare endpoints remain public; no compare here.
 const isProtectedEndpoint = (url = "") => {
   const path = String(url);
   return (
     path.includes("/auth/user/") ||
     path.includes("/rides/history") ||
     path.includes("/favourites") ||
-    path.includes("/alerts") ||
-    path.includes("/profile")
+    path.includes("/alerts")
   );
 };
 
-// Decide which UI routes are protected (UI-level)
 const isProtectedRoute = (pathname = "") => {
   const p = String(pathname);
   return (
@@ -96,7 +101,6 @@ const isProtectedRoute = (pathname = "") => {
   );
 };
 
-// Handle auth failures
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -106,12 +110,8 @@ api.interceptors.response.use(
     if (status === 401) {
       const currentPath = window.location.pathname;
 
-      // Always clear tokens on 401 so we don’t loop with a bad token
       clearTokens();
 
-      // IMPORTANT:
-      // Do NOT globally redirect just because a protected API endpoint was hit.
-      // Redirect ONLY if the user is currently on a protected UI route.
       if (
         isProtectedEndpoint(requestUrl) &&
         isProtectedRoute(currentPath) &&

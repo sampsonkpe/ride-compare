@@ -1,6 +1,5 @@
 import { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Plus } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
@@ -9,10 +8,36 @@ import LocationInput from "../components/rides/LocationInput";
 import BottomSheet from "../components/overlays/BottomSheet";
 import CompareResults from "./CompareResults";
 
-async function geocodeAddressIfAvailable(address) {
+function loadGoogleMapsScript() {
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
+
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) return resolve();
+
+    const existing = document.getElementById("google-maps-script");
+    if (existing) {
+      existing.addEventListener("load", resolve);
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(script);
+  });
+}
+
+async function geocodeAddress(address) {
   const trimmed = (address || "").trim();
   if (!trimmed) return null;
-  if (!window.google?.maps?.Geocoder) return null;
+
+  await loadGoogleMapsScript();
 
   return new Promise((resolve) => {
     const geocoder = new window.google.maps.Geocoder();
@@ -44,55 +69,11 @@ function extractErrorMessage(err) {
   return "Failed to compare rides";
 }
 
-function getFirstName(user) {
-  const full = (user?.full_name || user?.name || "").trim();
-  if (full) return full.split(/\s+/)[0];
-  const email = (user?.email || "").trim();
-  if (email && email.includes("@")) return email.split("@")[0];
-  return "";
-}
-
-function timeGreeting() {
+function timeGreeting(name = "") {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function RoutePill({ text, onClose, onAddStop }) {
-  return (
-    <div
-      className="w-full rc-card px-3 py-2"
-      style={{ boxShadow: "0 18px 55px rgba(0,0,0,0.30)" }}
-    >
-      <div className="flex items-center gap-2 min-w-0">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rc-icon-btn"
-          aria-label="Close sheet"
-          title="Close"
-        >
-          <X className="h-5 w-5 text-foreground" />
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-extrabold text-foreground">{text}</div>
-          <div className="text-xs text-muted-foreground font-medium">Available rides</div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onAddStop}
-          className="rc-icon-btn"
-          aria-label="Add stop"
-          title="Stops coming soon"
-        >
-          <Plus className="h-5 w-5 text-foreground" />
-        </button>
-      </div>
-    </div>
-  );
+  const base = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  if (!name) return `${base}!`;
+  return `${base}, ${name}!`;
 }
 
 export default function Compare() {
@@ -141,18 +122,20 @@ export default function Compare() {
       return { address, lat: Number(loc.lat), lng: Number(loc.lng) };
     }
 
-    const coords = await geocodeAddressIfAvailable(address);
+    const coords = await geocodeAddress(address);
     if (!coords) return null;
 
     return { address, lat: Number(coords.lat), lng: Number(coords.lng) };
   };
 
-  const pickupAddress = (pickup?.address || "").trim();
-  const dropoffAddress = (dropoff?.address || "").trim();
-  const isFormValid = pickupAddress.length > 0 && dropoffAddress.length > 0;
-
   const handleCompare = async () => {
-    if (!isFormValid) return;
+    const pickupAddress = pickup?.address?.trim();
+    const dropoffAddress = dropoff?.address?.trim();
+
+    if (!pickupAddress || !dropoffAddress) {
+      toast.error("Please enter pickup and dropoff locations");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -181,54 +164,60 @@ export default function Compare() {
   const pickupText = sheetData?.pickup?.address || pickup?.address || "Pickup";
   const dropoffText = sheetData?.dropoff?.address || dropoff?.address || "Dropoff";
 
-  const routePillText = useMemo(() => {
-    const left = (pickupText || "Pickup").split(",")[0]?.trim() || "Pickup";
-    const right = (dropoffText || "Dropoff").split(",")[0]?.trim() || "Dropoff";
-    return `${left} → ${right}`;
-  }, [pickupText, dropoffText]);
+  const greetingName = useMemo(() => {
+    const full = user?.full_name || user?.name || "";
+    const first = String(full).trim().split(" ")[0];
+    return first || "";
+  }, [user]);
 
-  const name = getFirstName(user);
-  const greeting = `${timeGreeting()}${name ? `, ${name}!` : "!"}`;
+  const greeting = useMemo(() => timeGreeting(greetingName), [greetingName]);
   const tagline = "Where would you like to go today?";
+
+  const canCompare = Boolean(pickup?.address?.trim()) && Boolean(dropoff?.address?.trim()) && !loading;
 
   return (
     <>
-      {/* Greeting (centred) */}
-      <div className="text-center mb-6 animate-fade-in-up">
-        <h1 className="text-[22px] md:text-3xl font-extrabold leading-tight mb-1">
-          {greeting}
-        </h1>
-        <p className="text-sm md:text-base text-muted-foreground font-medium">
-          {tagline}
-        </p>
+      {/* Hero */}
+      <div className="text-center mb-8 md:mb-10 animate-fade-in-up">
+        <h1 className="text-2xl md:text-4xl font-semibold mb-2">{greeting}</h1>
+        <p className="text-muted-foreground text-base md:text-lg">{tagline}</p>
       </div>
 
       {/* Form */}
-      <div className="rc-card p-5 space-y-4 animate-fade-in-up">
-        <LocationInput
-          label="Pickup"
-          value={pickup}
-          onChange={setPickup}
-          placeholder="Enter pickup location"
-          icon="pickup"
-          showCurrentLocation
-          inputRef={pickupRef}
-          onLocationError={() => toast.error("Location access unavailable")}
-        />
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card space-y-4 animate-fade-in-up">
+        <div>
+          <LocationInput
+            label="Pickup"
+            value={pickup}
+            onChange={setPickup}
+            placeholder="Enter pickup location"
+            icon="pickup"
+            showCurrentLocation
+            inputRef={pickupRef}
+            onLocationError={() => toast.error("Location access unavailable")}
+          />
+        </div>
 
-        <LocationInput
-          label="Dropoff"
-          value={dropoff}
-          onChange={setDropoff}
-          placeholder="Where are you going?"
-          icon="dropoff"
-          onLocationError={() => toast.error("Location search unavailable")}
-        />
+        <div>
+          <LocationInput
+            label="Dropoff"
+            value={dropoff}
+            onChange={setDropoff}
+            placeholder="Where are you going?"
+            icon="dropoff"
+            onLocationError={() => toast.error("Location search unavailable")}
+          />
+        </div>
 
         <button
           onClick={handleCompare}
-          disabled={!isFormValid || loading}
-          className={["rc-btn-primary", (!isFormValid || loading) ? "rc-btn-disabled" : ""].join(" ")}
+          disabled={!canCompare}
+          className={[
+            "w-full inline-flex items-center justify-center gap-2 min-h-13 px-6 rounded-xl text-sm font-semibold",
+            "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            !canCompare ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted active:scale-100" : "",
+          ].join(" ")}
           type="button"
         >
           {loading ? (
@@ -242,31 +231,18 @@ export default function Compare() {
         </button>
 
         {!user ? (
-          <p className="text-xs text-muted-foreground text-center font-medium">
+          <p className="text-xs text-muted-foreground text-center">
             Tip: Sign in to save places and alerts.
           </p>
         ) : null}
       </div>
 
-      {/* Floating route pill */}
-      {sheetOpen ? (
-        <div className="fixed left-0 right-0 z-[10001] px-4" style={{ top: 72 }}>
-          <div className="mx-auto w-full max-w-lg">
-            <RoutePill
-              text={routePillText}
-              onClose={() => setSheetOpen(false)}
-              onAddStop={() => toast("Stops coming next.", { icon: "➕" })}
-            />
-          </div>
-        </div>
-      ) : null}
-
       {/* Bottom sheet */}
       <BottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Available rides"
-        subtitle={null}
+        pickupText={pickupText}
+        dropoffText={dropoffText}
         snapPoints={[0.18, 0.66, 0.92]}
         initialSnap={1}
         maxWidthClass="max-w-lg"

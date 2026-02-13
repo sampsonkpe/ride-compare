@@ -9,41 +9,45 @@ import ThemeToggle from "../ThemeToggle";
 export default function TopBar({ variant = "app", onOpenAlerts }) {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const iconBtn = "rc-icon-btn";
-  const headerBase =
-    "sticky top-0 z-50 h-14 border-b border-border bg-background/85 backdrop-blur-lg";
-
-  const LogoButton = (
-    <button type="button" onClick={() => navigate("/compare")} className="inline-flex items-center">
+  const logoEl = (
+    <button
+      type="button"
+      onClick={() => navigate("/compare")}
+      className="inline-flex items-center"
+      aria-label="Go to Compare"
+    >
       <img
         src={logo}
         alt="RideCompare"
-        className="h-7 w-auto select-none rc-logo-invert-dark"
+        className="h-7 md:h-8 w-auto select-none dark:invert dark:brightness-200"
         draggable={false}
       />
     </button>
   );
 
-  const AlertsButton =
-    typeof onOpenAlerts === "function" ? (
-      <button type="button" className={iconBtn} onClick={onOpenAlerts} aria-label="Open alerts">
-        <Bell className="h-5 w-5 text-muted-foreground" />
-      </button>
-    ) : null;
-
   const rightActions = useMemo(() => {
+    const iconBtn =
+      "p-2 rounded-full hover:bg-muted transition-colors " +
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
     if (!user) {
       return (
         <div className="flex items-center gap-2">
-          {AlertsButton}
+          {typeof onOpenAlerts === "function" ? (
+            <button type="button" className={iconBtn} onClick={onOpenAlerts} aria-label="Open alerts">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+            </button>
+          ) : null}
+
           <ThemeToggle />
+
           <button
             type="button"
             onClick={() => navigate("/auth")}
-            className="h-10 px-4 rounded-xl text-sm font-semibold text-primary hover:bg-primary/10 transition
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
           >
             Sign in
           </button>
@@ -53,7 +57,12 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
 
     return (
       <div className="flex items-center gap-2">
-        {AlertsButton}
+        {typeof onOpenAlerts === "function" ? (
+          <button type="button" className={iconBtn} onClick={onOpenAlerts} aria-label="Open alerts">
+            <Bell className="h-5 w-5 text-muted-foreground" />
+          </button>
+        ) : null}
+
         <ThemeToggle />
 
         <div className="relative">
@@ -75,10 +84,10 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
                 aria-label="Close menu overlay"
               />
 
-              <div className="absolute right-0 mt-2 z-50 w-64 rounded-2xl border border-border bg-card shadow-card-hover overflow-hidden">
-                <div className="px-4 py-3 border-b border-border">
-                  <p className="text-xs text-muted-foreground font-semibold">Signed in as</p>
-                  <p className="text-sm font-semibold truncate">{user?.email}</p>
+              <div className="absolute right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-card-hover overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-card">
+                  <p className="text-xs text-muted-foreground">Signed in as</p>
+                  <p className="text-sm font-medium truncate text-foreground">{user?.email}</p>
                 </div>
 
                 <button
@@ -87,10 +96,10 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
                     setMenuOpen(false);
                     navigate("/profile");
                   }}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors inline-flex items-center gap-2"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors inline-flex items-center gap-2 bg-card"
                 >
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Profile & places
+                  Profile & Places
                 </button>
 
                 <button
@@ -100,10 +109,10 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
                     await logout();
                     navigate("/auth");
                   }}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors inline-flex items-center gap-2"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-destructive/10 transition-colors inline-flex items-center gap-2 bg-card"
                 >
                   <LogOut className="h-4 w-4 text-destructive" />
-                  <span className="text-destructive font-semibold">Sign out</span>
+                  <span className="text-destructive">Sign out</span>
                 </button>
               </div>
             </>
@@ -111,19 +120,24 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
         </div>
       </div>
     );
-  }, [user, AlertsButton, logout, menuOpen, navigate]);
+  }, [user, onOpenAlerts, navigate, logout, menuOpen]);
 
   if (variant === "auth") {
     return (
-      <header className={headerBase}>
-        <div className="mx-auto max-w-lg h-14 px-4 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className={iconBtn} aria-label="Go back" type="button">
+      <header className="w-full py-4 px-4 md:py-6 border-b border-border/60 bg-background/80 backdrop-blur-lg">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <button
+            onClick={() => navigate("/")}
+            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
+            aria-label="Go back"
+            type="button"
+          >
             <ChevronLeft className="h-5 w-5" />
           </button>
 
-          {LogoButton}
+          {logoEl}
 
-          <div className="w-10" />
+          <div className="w-9" />
         </div>
       </header>
     );
@@ -131,32 +145,36 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
 
   if (variant === "profile") {
     return (
-      <header className={headerBase}>
-        <div className="mx-auto max-w-lg h-14 px-4 flex items-center justify-between">
+      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background/80 backdrop-blur-lg">
+        <div className="max-w-lg mx-auto h-14 px-4 flex items-center justify-between">
           <button
             type="button"
             onClick={() => navigate("/compare")}
-            className={iconBtn}
+            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
             aria-label="Back"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
 
-          <div className="font-semibold">Profile</div>
+          <div className="font-semibold">Profile & Places</div>
 
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
     );
   }
 
   return (
-    <header className={headerBase}>
-      <div className="mx-auto max-w-lg h-14 px-4 flex items-center justify-between gap-3">
-        {LogoButton}
-        <div className="hidden sm:block text-xs text-muted-foreground font-medium">
+    <header className="w-full py-4 px-4 md:py-6">
+      <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">{logoEl}</div>
+
+        <div className="hidden sm:block text-xs md:text-sm text-muted-foreground">
           Compare. Choose. Ride.
         </div>
+
         {rightActions}
       </div>
     </header>

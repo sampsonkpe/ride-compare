@@ -4,6 +4,7 @@ import uuid
 
 
 class Favourite(models.Model):
+    """Model to store user's saved places (Home/Work/Other)."""
 
     class PlaceType(models.TextChoices):
         HOME = "HOME", "Home"
@@ -18,8 +19,9 @@ class Favourite(models.Model):
     )
 
     type = models.CharField(max_length=10, choices=PlaceType.choices, default=PlaceType.OTHER)
-    label = models.CharField(max_length=60, blank=True, default="")
-    address = models.CharField(max_length=255)
+    label = models.CharField(max_length=100, blank=True, null=True)
+
+    address = models.CharField(max_length=500)
     lat = models.FloatField()
     lng = models.FloatField()
 
@@ -32,5 +34,4 @@ class Favourite(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        name = self.label or self.address
-        return f"{self.user.email} - {self.type} - {name}"
+        return f"{self.user.email} - {self.type} - {self.label or self.address}"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useContext } from "react";
+import { useEffect, useMemo, useRef, useState, useContext } from "react";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
 import favouritesService from "../services/favouritesService";
@@ -41,20 +41,8 @@ function prettyErrorData(data) {
 }
 
 function extractLatLng(fav) {
-  const lat =
-    fav?.lat ??
-    fav?.pickup_lat ??
-    fav?.latitude ??
-    fav?.location?.lat ??
-    fav?.location?.latitude ??
-    null;
-  const lng =
-    fav?.lng ??
-    fav?.pickup_lng ??
-    fav?.longitude ??
-    fav?.location?.lng ??
-    fav?.location?.longitude ??
-    null;
+  const lat = fav?.lat ?? fav?.latitude ?? fav?.location?.lat ?? fav?.location?.latitude ?? null;
+  const lng = fav?.lng ?? fav?.longitude ?? fav?.location?.lng ?? fav?.location?.longitude ?? null;
   return { lat, lng };
 }
 
@@ -86,8 +74,13 @@ export default function Profile() {
   const [label, setLabel] = useState("");
   const [locationValue, setLocationValue] = useState({ address: "", lat: null, lng: null });
 
+  const didInitRef = useRef(false);
+
   useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
     loadFavourites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadFavourites = async () => {
@@ -152,8 +145,11 @@ export default function Profile() {
 
   const buildPayloadVariants = ({ finalLabel, address, lat, lng, type }) => {
     const v1 = { type, label: finalLabel, address, lat, lng };
+
+    // Common alternates
     const v2 = { place_type: type, name: finalLabel, address, latitude: lat, longitude: lng };
     const v3 = { type, label: finalLabel, location: { address, lat, lng } };
+
     return [v1, v2, v3];
   };
 
@@ -226,24 +222,32 @@ export default function Profile() {
     }
   };
 
-  const iconBtn = "rc-icon-btn";
-  const primaryBtn = "rc-btn-primary";
-  const destructiveOutline =
-    "w-full min-h-[50px] px-6 rounded-xl border border-destructive/30 text-destructive " +
-    "hover:bg-destructive/10 transition inline-flex items-center justify-center gap-2 font-semibold " +
+  const card = "bg-card border border-border rounded-2xl shadow-card";
+
+  const primaryBtn =
+    "inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold " +
+    "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
+  const iconBtn =
+    "p-2 rounded-full hover:bg-muted transition-colors " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+  const destructiveOutline =
+    "w-full min-h-[48px] px-4 rounded-xl border border-destructive/30 text-destructive " +
+    "hover:bg-destructive/10 transition inline-flex items-center justify-center gap-2 font-semibold";
+
   return (
-    <div className="pb-10">
-      <div className="space-y-6">
+    <div className="px-4 pb-10">
+      <div className="pt-6 space-y-6">
         {/* User card */}
-        <div className="rc-card p-5">
-          <div className="flex items-center gap-3">
+        <div className={`${card} p-5`}>
+          <div className="flex items-center gap-2">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground font-semibold">Signed in as</p>
+              <p className="text-sm text-muted-foreground">Signed in as</p>
               <p className="font-semibold truncate">{user?.email}</p>
             </div>
           </div>
@@ -262,9 +266,7 @@ export default function Profile() {
         {loadingPlaces ? (
           <div className="text-muted-foreground">Loading saved places…</div>
         ) : favourites.length === 0 ? (
-          <div className="text-muted-foreground py-10 text-center">
-            No saved places yet.
-          </div>
+          <div className="text-muted-foreground py-10 text-center">No saved places yet.</div>
         ) : (
           <div className="space-y-3">
             {favourites.map((fav) => {
@@ -275,7 +277,7 @@ export default function Profile() {
               const addressText = extractAddress(fav) || "—";
 
               return (
-                <div key={fav.id} className="rc-card rc-card-hover p-4">
+                <div key={fav.id} className={`${card} p-4`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -314,7 +316,7 @@ export default function Profile() {
             window.location.href = "/auth";
           }}
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4 text-destructive" />
           Sign out
         </button>
       </div>
@@ -347,7 +349,7 @@ export default function Profile() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-2">Type</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { key: "HOME", label: "Home", Icon: Home },
@@ -376,20 +378,20 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-2">Label</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Label</label>
                 <input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={defaultLabelForType || "e.g. Gym"}
-                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-11 px-4 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground/80 outline-none focus:ring-2 focus:ring-ring"
                   disabled={saving}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">For Home/Work, you can leave this empty.</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-2">Location</label>
                 <LocationInput
+                  label="Location"
                   value={normalizeAddressValue(locationValue)}
                   onChange={(v) => setLocationValue(normalizeAddressValue(v))}
                   placeholder="Search a place"
@@ -404,8 +406,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="min-h-[50px] px-6 rounded-xl border border-border bg-card hover:bg-muted transition font-semibold
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-11 px-4 rounded-xl border border-border bg-card hover:bg-muted transition font-semibold"
                 disabled={saving}
               >
                 Cancel
