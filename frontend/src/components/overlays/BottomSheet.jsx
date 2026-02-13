@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -9,14 +10,11 @@ export default function BottomSheet({
   onClose,
   title,
   subtitle,
-  headerRight,
-  headerBottom,
   children,
   snapPoints = [0.18, 0.58, 0.92],
-  initialSnap = 1,
-  zIndex = 50,
+  initialSnap = 0,
+  zIndex = 9999,
 }) {
-  const sheetRef = useRef(null);
   const dragRef = useRef({
     active: false,
     startY: 0,
@@ -25,14 +23,17 @@ export default function BottomSheet({
     raf: 0,
   });
 
-  const points = useMemo(() => {
-    return snapPoints.map((f) => clamp(1 - f, 0, 1));
-  }, [snapPoints]);
+  const maxSnap = useMemo(() => Math.max(...snapPoints), [snapPoints]);
+  const sheetHeightPx = useMemo(() => Math.round(window.innerHeight * maxSnap), [maxSnap]);
 
-  const [snapIndex, setSnapIndex] = useState(initialSnap);
-  const [translate, setTranslate] = useState(1);
+  const snapTranslatePx = useMemo(() => {
+    const vh = window.innerHeight;
+    const h = Math.round(vh * maxSnap);
+    return snapPoints.map((f) => clamp(h - Math.round(vh * f), 0, h));
+  }, [snapPoints, maxSnap]);
 
-  // Lock body scroll when open
+  const [translatePx, setTranslatePx] = useState(sheetHeightPx);
+
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -42,47 +43,39 @@ export default function BottomSheet({
     };
   }, [open]);
 
-  // Open/close animations
   useEffect(() => {
     if (!open) {
-      setTranslate(1);
+      setTranslatePx(sheetHeightPx);
       return;
     }
-    setSnapIndex(initialSnap);
-    setTranslate(points[initialSnap] ?? points[1] ?? 0.42);
-  }, [open, initialSnap, points]);
+    setTranslatePx(snapTranslatePx[initialSnap] ?? snapTranslatePx[0] ?? 0);
+  }, [open, initialSnap, snapTranslatePx, sheetHeightPx]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
-
     const onKeyDown = (e) => {
       if (e.key === "Escape") onClose?.();
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
-  const heightPx = () => window.innerHeight;
-
-  const setTranslateRaf = (v) => {
-    dragRef.current.translate = v;
+  const setTranslateRaf = (px) => {
+    dragRef.current.translate = px;
     cancelAnimationFrame(dragRef.current.raf);
-    dragRef.current.raf = requestAnimationFrame(() => setTranslate(v));
+    dragRef.current.raf = requestAnimationFrame(() => setTranslatePx(px));
   };
 
   const beginDrag = (clientY) => {
     dragRef.current.active = true;
     dragRef.current.startY = clientY;
-    dragRef.current.startTranslate = translate;
+    dragRef.current.startTranslate = translatePx;
   };
 
   const moveDrag = (clientY) => {
     if (!dragRef.current.active) return;
     const dy = clientY - dragRef.current.startY;
-    const delta = dy / heightPx();
-    const next = clamp(dragRef.current.startTranslate + delta, 0, 1);
+    const next = clamp(dragRef.current.startTranslate + dy, 0, sheetHeightPx);
     setTranslateRaf(next);
   };
 
@@ -91,93 +84,116 @@ export default function BottomSheet({
     dragRef.current.active = false;
 
     const cur = dragRef.current.translate;
+
+    // dragged down enough => close
+    if (cur > sheetHeightPx * 0.88) {
+      onClose?.();
+      return;
+    }
+
+    // snap to nearest
     let best = 0;
     let bestDist = Infinity;
-
-    points.forEach((p, idx) => {
-      const d = Math.abs(cur - p);
+    snapTranslatePx.forEach((px, idx) => {
+      const d = Math.abs(cur - px);
       if (d < bestDist) {
         bestDist = d;
         best = idx;
       }
     });
 
-    // dragged far down -> close
-    if (cur > 0.82) {
-      onClose?.();
-      return;
-    }
-
-    setSnapIndex(best);
-    setTranslate(points[best]);
+    setTranslatePx(snapTranslatePx[best]);
   };
-
-  const onPointerDown = (e) => {
-    if (!open) return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    beginDrag(e.clientY);
-  };
-  const onPointerMove = (e) => moveDrag(e.clientY);
-  const onPointerUp = () => endDrag();
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0" style={{ zIndex }}>
-      {/* backdrop */}
-      <button
-        type="button"
-        aria-label="Close sheet"
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex,
+      }}
+    >
+      {/* Backdrop */}
+      <div
         onClick={onClose}
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.35)",
+          backdropFilter: "blur(6px)",
+        }}
       />
 
-      {/* sheet */}
+      {/* Sheet */}
       <div
-        ref={sheetRef}
         role="dialog"
         aria-modal="true"
-        className={[
-          "absolute left-0 right-0 bottom-0",
-          "bg-card border-t border-border",
-          "rounded-t-2xl shadow-[0_-20px_60px_rgba(0,0,0,0.25)]",
-          "transition-transform duration-200 ease-out",
-        ].join(" ")}
         style={{
-          transform: `translateY(${translate * 100}%)`,
-          willChange: "transform",
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: sheetHeightPx,
+          transform: `translateY(${translatePx}px)`,
+          transition: "transform 200ms ease-out",
+          background: "var(--rc-sheet-bg, #111827)",
+          color: "white",
+          borderTopLeftRadius: 18,
+          borderTopRightRadius: 18,
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.35)",
+          overflow: "hidden",
         }}
       >
-        {/* sticky drag handle + header */}
+        {/* Handle/Header (drag area) */}
         <div
-          className="px-4 pt-3 pb-3 select-none sticky top-0 bg-card/95 backdrop-blur border-b border-border"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            beginDrag(e.clientY);
+          }}
+          onPointerMove={(e) => moveDrag(e.clientY)}
+          onPointerUp={endDrag}
+          style={{
+            padding: "10px 16px 8px",
+            userSelect: "none",
+            cursor: "grab",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}
         >
-          <div className="mx-auto h-1.5 w-12 rounded-full bg-muted" />
+          <div
+            style={{
+              margin: "0 auto",
+              height: 6,
+              width: 54,
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.22)",
+            }}
+          />
 
-          {title || subtitle ? (
-            <div className="mt-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                {title ? <div className="text-sm font-semibold">{title}</div> : null}
-                {subtitle ? (
-                  <div className="text-xs text-muted-foreground mt-1 truncate">
-                    {subtitle}
-                  </div>
-                ) : null}
-              </div>
-
-              {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+          {(title || subtitle) ? (
+            <div style={{ marginTop: 10 }}>
+              {title ? <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div> : null}
+              {subtitle ? (
+                <div style={{ marginTop: 4, opacity: 0.75, fontSize: 12 }}>{subtitle}</div>
+              ) : null}
             </div>
           ) : null}
-
-          {headerBottom ? <div className="mt-3">{headerBottom}</div> : null}
         </div>
 
-        {/* content */}
-        <div className="max-h-[82vh] overflow-y-auto px-4 pb-6">{children}</div>
+        {/* Content */}
+        <div
+          style={{
+            height: "calc(100% - 64px)",
+            overflowY: "auto",
+            padding: "12px 16px 18px",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

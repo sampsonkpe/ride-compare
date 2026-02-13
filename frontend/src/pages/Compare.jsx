@@ -6,12 +6,10 @@ import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
 import logo from "../assets/ridecomparelogo.png";
 import LocationInput from "../components/rides/LocationInput";
-import { LogIn, LogOut, UserCog, ChevronDown } from "lucide-react";
+import { LogIn, LogOut, UserCog } from "lucide-react";
 
-import BottomSheet from "../components/overlays/BottomSheet.jsx";
-import CompareResults from "./CompareResults.jsx";
-
-const LAST_RESULTS_KEY = "ridecompare:last_results_v1";
+import BottomSheet from "../components/overlays/BottomSheet";
+import CompareResults from "./CompareResults";
 
 function loadGoogleMapsScript() {
   const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -47,10 +45,7 @@ async function geocodeAddress(address) {
   return new Promise((resolve) => {
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ address: trimmed, region: "GH" }, (results, status) => {
-      if (status !== "OK" || !results?.[0]?.geometry?.location) {
-        resolve(null);
-        return;
-      }
+      if (status !== "OK" || !results?.[0]?.geometry?.location) return resolve(null);
       const loc = results[0].geometry.location;
       resolve({ lat: loc.lat(), lng: loc.lng() });
     });
@@ -83,10 +78,8 @@ export default function Compare() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
 
-  // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetData, setSheetData] = useState({ rides: [], pickup: null, dropoff: null });
-  const [sheetSortBy, setSheetSortBy] = useState("price");
 
   const { user, logout } = useContext(AuthContext);
   const themeCtx = useContext(ThemeContext);
@@ -96,7 +89,6 @@ export default function Compare() {
   const location = useLocation();
   const pickupRef = useRef(null);
 
-  // Prefill from favourites
   useEffect(() => {
     const incomingPickup = location.state?.pickup;
     const incomingDropoff = location.state?.dropoff;
@@ -123,11 +115,6 @@ export default function Compare() {
   }, []);
 
   useEffect(() => {
-    if (sheetOpen) setSheetOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickup.address, dropoff.address]);
-
-  useEffect(() => {
     if (user) loadHistory();
     else setHistory([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,9 +124,7 @@ export default function Compare() {
     try {
       const data = await ridesService.getHistory();
       setHistory(Array.isArray(data) ? data : []);
-    } catch {
-      /* silent */
-    }
+    } catch {}
   };
 
   const ensureCoords = async (loc) => {
@@ -165,8 +150,6 @@ export default function Compare() {
       return;
     }
 
-    setSheetOpen(false);
-
     setLoading(true);
     try {
       const [pickupFinal, dropoffFinal] = await Promise.all([
@@ -180,33 +163,17 @@ export default function Compare() {
       }
 
       const data = await ridesService.compareRides(pickupFinal, dropoffFinal);
+      console.log("COMPARE RESPONSE:", data);
 
       const ridesArr = Array.isArray(data?.rides) ? data.rides : [];
 
-      setSheetData({
-        rides: ridesArr,
-        pickup: pickupFinal,
-        dropoff: dropoffFinal,
-      });
-
-      // persist last results (nice fallback)
-      try {
-        localStorage.setItem(
-          LAST_RESULTS_KEY,
-          JSON.stringify({ rides: ridesArr, pickup: pickupFinal, dropoff: dropoffFinal })
-        );
-      } catch {}
-
-      setSheetSortBy("price");
+      setSheetData({ rides: ridesArr, pickup: pickupFinal, dropoff: dropoffFinal });
       setSheetOpen(true);
+      console.log("SHEET OPEN -> TRUE");
 
       if (user) loadHistory();
     } catch (err) {
-      console.error("Compare failed:", {
-        status: err?.response?.status,
-        data: err?.response?.data,
-        message: err?.message,
-      });
+      console.error("COMPARE ERROR:", err);
       toast.error(extractErrorMessage(err));
     } finally {
       setLoading(false);
@@ -255,21 +222,6 @@ export default function Compare() {
   const pickupText = sheetData?.pickup?.address || pickup?.address || "Pickup";
   const dropoffText = sheetData?.dropoff?.address || dropoff?.address || "Dropoff";
 
-  const sortControl = (
-    <div className="relative inline-flex items-center">
-      <select
-        value={sheetSortBy}
-        onChange={(e) => setSheetSortBy(e.target.value)}
-        className="appearance-none bg-card border border-border rounded-lg px-3 py-2 pr-8 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Sort results"
-      >
-        <option value="price">Price</option>
-        <option value="eta">ETA</option>
-      </select>
-      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="bg-card border-b border-border">
@@ -293,9 +245,7 @@ export default function Compare() {
       <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8 sm:mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold mb-3">Compare rides instantly</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
-            Find the best price across all platforms
-          </p>
+          <p className="text-muted-foreground text-base sm:text-lg">Find the best price across all platforms</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card space-y-4">
@@ -326,7 +276,7 @@ export default function Compare() {
           <button
             onClick={handleCompare}
             disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold
+            className="w-full inline-flex items-center justify-center gap-2 min-h-[52px] px-4 rounded-xl text-sm font-semibold
               bg-primary text-primary-foreground hover:opacity-90 transition
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
               disabled:opacity-50 disabled:pointer-events-none"
@@ -337,22 +287,29 @@ export default function Compare() {
         </div>
       </main>
 
-      {/* Bottom pull-up sheet: opens collapsed after compare */}
+      {/* TEST: force open */}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="fixed bottom-4 right-4 z-[9999] bg-black text-white px-4 py-2 rounded"
+      >
+        TEST SHEET
+      </button>
+
       <BottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Available rides"
+        title="Available Rides"
         subtitle={`${pickupText} → ${dropoffText}`}
-        initialSnap={0}
-        snapPoints={[0.18, 0.58, 0.92]}
-        headerRight={sortControl}
+        snapPoints={[0.22, 0.66, 0.92]}
+        initialSnap={1}
       >
         <CompareResults
           embedded
           rides={sheetData.rides}
           pickup={sheetData.pickup}
           dropoff={sheetData.dropoff}
-          sortBy={sheetSortBy}
+          onClose={() => setSheetOpen(false)}
         />
       </BottomSheet>
     </div>
