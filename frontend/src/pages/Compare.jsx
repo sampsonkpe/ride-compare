@@ -177,13 +177,11 @@ export default function Compare() {
 
   return (
     <>
-      {/* Hero */}
       <div className="text-center mb-7 md:mb-9 animate-fade-in-up">
         <h1 className="text-xl md:text-3xl font-semibold mb-2">{greeting}</h1>
         <p className="text-muted-foreground text-sm md:text-base">{tagline}</p>
       </div>
 
-      {/* Form card */}
       <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-xl p-4 sm:p-6 shadow-card space-y-4 animate-fade-in-up">
         <div>
           <LocationInput
@@ -216,7 +214,7 @@ export default function Compare() {
             "w-full inline-flex items-center justify-center gap-2 min-h-[52px] px-6 rounded-xl text-sm font-semibold",
             canCompare
               ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]"
-              : "bg-muted/80 text-muted-foreground cursor-not-allowed",
+              : "bg-card/60 text-muted-foreground border border-border/60 cursor-not-allowed",
             "transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           ].join(" ")}
           type="button"
@@ -238,18 +236,21 @@ export default function Compare() {
         ) : null}
       </div>
 
-      {/* Bottom sheet */}
       <BottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         pickupText={pickupText}
         dropoffText={dropoffText}
-        onAddStop={() => toast("Stops are coming next 👀", { icon: "➕" })}
+        onAddStop={() => toast("Stops are coming next👀")}
         snapPoints={[0.18, 0.66, 0.92]}
         initialSnap={1}
         maxWidthClass="max-w-lg"
       >
-        <CompareResults embedded rides={sheetData.rides} />
+        <CompareResults
+          embedded
+          rides={sheetData.rides}
+          onClose={() => setSheetOpen(false)}
+        />
       </BottomSheet>
     </>
   );

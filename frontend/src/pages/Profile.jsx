@@ -12,7 +12,6 @@ import {
   Pencil,
   Trash2,
   X,
-  Save,
   LogOut,
 } from "lucide-react";
 
@@ -88,7 +87,6 @@ export default function Profile() {
     try {
       const data = await favouritesService.getFavourites();
       setFavourites(Array.isArray(data) ? data : []);
-      // If empty, no toast — it’s a valid state.
     } catch {
       toast.error("Failed to load saved places");
     } finally {
@@ -220,15 +218,15 @@ export default function Profile() {
     }
   };
 
-  const card = "bg-card border border-border rounded-2xl shadow-card";
+  const card = "border border-border/70 rounded-2xl shadow-card bg-card/80 backdrop-blur-xl";
 
   const primaryBtn =
-    "inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold " +
+    "inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl font-semibold " +
     "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
   const iconBtn =
-    "p-2 rounded-full hover:bg-muted transition-colors " +
+    "p-2 rounded-full hover:bg-muted/60 transition-colors " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   const destructiveOutline =
@@ -238,7 +236,6 @@ export default function Profile() {
   return (
     <div className="px-4 pb-10">
       <div className="pt-6 space-y-6">
-        {/* User card */}
         <div className={`${card} p-5`}>
           <div className="flex items-center gap-2">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -251,7 +248,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Saved places header */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Saved places</h3>
           <button type="button" onClick={openAddModal} className={primaryBtn}>
@@ -260,7 +256,6 @@ export default function Profile() {
           </button>
         </div>
 
-        {/* Saved places list */}
         {loadingPlaces ? (
           <div className="text-muted-foreground">Loading saved places…</div>
         ) : favourites.length === 0 ? (
@@ -281,11 +276,7 @@ export default function Profile() {
                       <Icon
                         className={[
                           "h-5 w-5 shrink-0 mt-0.5",
-                          t === "HOME"
-                            ? "text-primary"
-                            : t === "WORK"
-                            ? "text-emerald-500"
-                            : "text-violet-400",
+                          t === "HOME" ? "text-primary" : t === "WORK" ? "text-emerald-500" : "text-violet-400",
                         ].join(" ")}
                       />
                       <div className="min-w-0">
@@ -314,7 +305,6 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Sign out */}
         <button
           type="button"
           className={destructiveOutline}
@@ -328,18 +318,17 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* Modal */}
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8" role="dialog" aria-modal="true">
           <button
-            className="absolute inset-0 bg-background/70"
+            className="absolute inset-0 bg-background/60 backdrop-blur-md"
             onClick={closeModal}
             type="button"
             aria-label="Close modal overlay"
           />
 
           <form
-            className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-card-hover"
+            className="relative w-full max-w-md bg-card/85 backdrop-blur-xl border border-border/70 rounded-2xl shadow-card-hover"
             onSubmit={(e) => {
               e.preventDefault();
               handleSave();
@@ -347,7 +336,7 @@ export default function Profile() {
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-5 border-b border-border flex items-center justify-between">
+            <div className="p-5 border-b border-border/70 flex items-center justify-between">
               <h4 className="font-semibold">{mode === "edit" ? "Edit place" : "Save place"}</h4>
               <button type="button" onClick={closeModal} className={iconBtn} disabled={saving} aria-label="Close">
                 <X className="h-5 w-5" />
@@ -373,7 +362,7 @@ export default function Profile() {
                         className={[
                           "h-11 rounded-xl border px-3 inline-flex items-center justify-center gap-2 text-sm font-semibold transition",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          active ? "border-primary bg-primary/10" : "border-border bg-card hover:bg-muted",
+                          active ? "border-primary bg-primary/10" : "border-border/70 bg-card/70 hover:bg-muted/60",
                         ].join(" ")}
                       >
                         <item.Icon className="h-4 w-4" />
@@ -390,7 +379,7 @@ export default function Profile() {
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={defaultLabelForType || "e.g. Gym"}
-                  className="w-full h-11 px-4 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/60 outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-11 px-4 rounded-xl border border-border/70 bg-card/70 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 outline-none focus:ring-2 focus:ring-ring"
                   disabled={saving}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">For Home/Work, you can leave this empty.</p>
@@ -409,17 +398,16 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="p-5 border-t border-border flex justify-end gap-2">
+            <div className="p-5 border-t border-border/70 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={closeModal}
-                className="h-11 px-4 rounded-xl border border-border bg-card hover:bg-muted transition font-semibold"
+                className="h-11 px-4 rounded-xl border border-border/70 bg-card/70 hover:bg-muted/60 transition font-semibold"
                 disabled={saving}
               >
                 Cancel
               </button>
               <button type="submit" className={primaryBtn} disabled={saving}>
-                <Save className="h-4 w-4" />
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>

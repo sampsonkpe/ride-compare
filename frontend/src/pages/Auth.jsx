@@ -98,6 +98,14 @@ export default function Auth() {
     return true;
   };
 
+  const canSubmit = useMemo(() => {
+    const e = email.trim();
+    const p = password;
+    if (!e || !p || p.length < 6) return false;
+    if (!isLogin && !displayName.trim()) return false;
+    return true;
+  }, [email, password, isLogin, displayName]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -130,7 +138,7 @@ export default function Auth() {
   };
 
   const inputBase =
-    "w-full h-11 rounded-xl bg-card border border-border pl-11 pr-4 text-foreground " +
+    "w-full h-11 rounded-xl bg-card/70 backdrop-blur-md border border-border/70 pl-11 pr-4 text-foreground " +
     "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
   const iconCls = "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground";
@@ -139,10 +147,10 @@ export default function Auth() {
     <div className="w-full">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold mb-2">{greeting}</h1>
-        <p className="text-muted-foreground">{subtitle}</p>
+        <p className="text-muted-foreground text-sm">{subtitle}</p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card">
+      <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-xl p-4 sm:p-6 shadow-card">
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
@@ -152,7 +160,7 @@ export default function Auth() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 maxLength={150}
-                className="w-full h-11 rounded-xl bg-card border border-border px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full h-11 rounded-xl bg-card/70 backdrop-blur-md border border-border/70 px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Your full name"
                 required
               />
@@ -167,7 +175,7 @@ export default function Auth() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 maxLength={30}
-                className="w-full h-11 rounded-xl bg-card border border-border px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full h-11 rounded-xl bg-card/70 backdrop-blur-md border border-border/70 px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Your phone number"
               />
             </div>
@@ -206,7 +214,7 @@ export default function Auth() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg
-                  text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 title={showPassword ? "Hide" : "Show"}
               >
@@ -216,12 +224,12 @@ export default function Auth() {
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl border border-destructive bg-card">
+            <div className="p-3 rounded-xl border border-destructive/40 bg-card/70 backdrop-blur-md">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 
-          <button type="submit" disabled={isSubmitting} className="rc-btn-primary">
+          <button type="submit" disabled={isSubmitting || !canSubmit} className="rc-btn-primary">
             {isSubmitting ? (
               <>
                 <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />

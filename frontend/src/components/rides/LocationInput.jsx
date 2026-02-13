@@ -217,6 +217,7 @@ export default function LocationInput({
     onChange({ address: "", lat: null, lng: null });
     setPredictions([]);
     setSelectedIndex(-1);
+    setShowSuggestions(false);
   };
 
   const useCurrentLocation = () => {
@@ -262,7 +263,12 @@ export default function LocationInput({
     <div className="relative">
       {(label || showCurrentLocation) && (
         <div className="flex items-center justify-between gap-3 mb-2">
-          {label ? <label className="block text-xs font-medium text-muted-foreground">{label}</label> : <span />}
+          {label ? (
+            <label className="block text-xs font-medium text-muted-foreground">{label}</label>
+          ) : (
+            <span />
+          )}
+
           {showCurrentLocation ? (
             <button
               type="button"
@@ -279,8 +285,11 @@ export default function LocationInput({
 
       <div
         className={[
-          "relative flex items-center rounded-xl border-2 bg-card transition",
-          isFocused ? "border-ring shadow-card" : "border-border hover:border-muted-foreground/30",
+          "relative flex items-center rounded-xl border-2 transition",
+          "bg-card/70 backdrop-blur-xl",
+          isFocused
+            ? "border-ring shadow-card-hover"
+            : "border-border/70 hover:border-muted-foreground/30",
         ].join(" ")}
       >
         <div className="pl-4 pr-2">{pickIcon}</div>
@@ -324,7 +333,7 @@ export default function LocationInput({
       </div>
 
       {showSuggestions && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-card/70 backdrop-blur-md border border-border rounded-xl overflow-hidden shadow-card-hover">
+        <div className="absolute z-50 w-full mt-2 bg-card/75 backdrop-blur-xl border border-border/70 rounded-xl overflow-hidden shadow-card-hover">
           {predictions.slice(0, 5).map((p, idx) => (
             <button
               key={p.place_id}
