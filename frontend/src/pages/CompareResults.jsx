@@ -118,8 +118,9 @@ export default function CompareResults({ embedded = false, rides = [], onClose }
 
   return (
     <Wrapper>
-      <div className="flex items-center justify-between gap-3 pt-1 pb-1">
-        <div className="text-sm font-semibold text-foreground">Available rides</div>
+      {/* Available rides + sort */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <div className="text-sm font-semibold text-foreground">Available Rides</div>
 
         <div className="relative shrink-0">
           <select
@@ -127,8 +128,8 @@ export default function CompareResults({ embedded = false, rides = [], onClose }
             onChange={(e) => setSortBy(e.target.value)}
             className={[
               "appearance-none rounded-lg px-3 py-1.5 pr-8 text-sm text-foreground outline-none",
-              "border border-border/70",
-              "bg-card/70 backdrop-blur-md",
+              "border border-border/60",
+              "bg-card/70 backdrop-blur-lg",
               "focus:ring-2 focus:ring-ring",
             ].join(" ")}
             aria-label="Sort results"
@@ -140,6 +141,7 @@ export default function CompareResults({ embedded = false, rides = [], onClose }
         </div>
       </div>
 
+      {/* Cards */}
       <div className="space-y-3">
         {sortedRides.map((ride, index) => {
           const providerKey = normalizeProvider(ride?.provider);
@@ -157,10 +159,7 @@ export default function CompareResults({ embedded = false, rides = [], onClose }
           return (
             <div
               key={index}
-              className={[
-                "border border-border/70 rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-all duration-300",
-                "bg-card/85 backdrop-blur-xl",
-              ].join(" ")}
+              className="bg-card/85 backdrop-blur-xl border border-border/60 rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-all duration-300"
               style={{ animationDelay: `${index * 60}ms` }}
             >
               <div className="flex items-center justify-between gap-3">
@@ -190,7 +189,12 @@ export default function CompareResults({ embedded = false, rides = [], onClose }
                 <div className="text-3xl font-bold text-foreground">{priceText}</div>
               </div>
 
-              <a href={deepLink} target="_blank" rel="noreferrer" className={primaryBtn + " w-full mt-4"}>
+              <a
+                href={deepLink}
+                target="_blank"
+                rel="noreferrer"
+                className={primaryBtn + " w-full mt-4"}
+              >
                 Continue in App
               </a>
             </div>

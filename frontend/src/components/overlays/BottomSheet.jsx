@@ -151,16 +151,19 @@ export default function BottomSheet({
             height: sheetHeightPx,
             transform: `translateY(${translatePx}px)`,
             transition: isDragging ? "none" : "transform 220ms ease-out",
-            background: "hsl(var(--card) / 0.86)",
+
+            background: "hsl(var(--background) / 0.88)",
             backdropFilter: "blur(18px)",
+
             color: "hsl(var(--foreground))",
             borderTopLeftRadius: 18,
             borderTopRightRadius: 18,
             boxShadow: "0 -20px 60px rgba(0,0,0,0.35)",
             overflow: "hidden",
-            borderTop: "1px solid hsl(var(--border) / 0.85)",
+            borderTop: "1px solid hsl(var(--border) / 0.75)",
           }}
         >
+          {/* Drag handle */}
           <div
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -185,11 +188,11 @@ export default function BottomSheet({
             />
           </div>
 
-          {/* ROUTE HEADER (separate from Available Rides) */}
+          {/* ROUTE HEADER */}
           <div
-            className="px-3 pb-3 pt-2 border-b border-border/70"
+            className="px-3 pb-3 pt-2 border-b border-border/60"
             style={{
-              background: "hsl(var(--card) / 0.78)",
+              background: "hsl(var(--card) / 0.82)",
               backdropFilter: "blur(16px)",
             }}
           >
