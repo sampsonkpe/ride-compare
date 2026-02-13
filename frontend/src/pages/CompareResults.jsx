@@ -56,23 +56,15 @@ function rideTypeLabel(providerKey, ride) {
 
   const s = String(raw).trim();
   if (!s) return `${providerDisplayName(providerKey)} Economy`;
-
-  // UberX formatting preference
   if (/uberx/i.test(s)) return "UberX";
 
-  // If already includes provider name, keep it clean
   const company = providerDisplayName(providerKey);
   if (s.toLowerCase().includes(company.toLowerCase())) return s;
 
-  // Default: "Bolt Comfort", "Yango Economy"
   return `${company} ${s}`;
 }
 
-export default function CompareResults({
-  embedded = false,
-  rides = [],
-  onClose,
-}) {
+export default function CompareResults({ embedded = false, rides = [], onClose }) {
   const [sortBy, setSortBy] = useState("price");
 
   const sortedRides = useMemo(() => {
@@ -126,30 +118,28 @@ export default function CompareResults({
 
   return (
     <Wrapper>
-      {/* Sheet header row: Available Rides + Filter */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 pt-1">
         <div className="text-sm font-semibold text-foreground">Available Rides</div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-medium text-muted-foreground">Filter</div>
-
-          <div className="relative shrink-0">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none bg-card border border-border rounded-lg px-3 py-1.5 pr-8 text-sm text-foreground
-                         focus:ring-2 focus:ring-ring outline-none"
-              aria-label="Sort results"
-            >
-              <option value="price">Price</option>
-              <option value="eta">ETA</option>
-            </select>
-            <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+        <div className="relative shrink-0">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className={[
+              "appearance-none rounded-lg px-3 py-1.5 pr-8 text-sm text-foreground outline-none",
+              "border border-border/70",
+              "bg-card/75 backdrop-blur-md",
+              "focus:ring-2 focus:ring-ring",
+            ].join(" ")}
+            aria-label="Sort results"
+          >
+            <option value="price">Sort by Price</option>
+            <option value="eta">Sort by ETA</option>
+          </select>
+          <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 
-      {/* Cards */}
       <div className="space-y-3">
         {sortedRides.map((ride, index) => {
           const providerKey = normalizeProvider(ride?.provider);
@@ -159,7 +149,7 @@ export default function CompareResults({
           const deepLink = PROVIDER_DEEPLINK[providerKey] || "https://ridecompare.app";
 
           const etaNum = toNumber(ride?.eta_minutes);
-          const etaText = etaNum == null ? "--" : `${etaNum} min`;
+          const etaText = etaNum == null ? "--" : `${etaNum} min away`;
 
           const priceText = formatMoneyGHS(ride?.price);
           const rideType = rideTypeLabel(providerKey, ride);
@@ -167,10 +157,9 @@ export default function CompareResults({
           return (
             <div
               key={index}
-              className="bg-card border border-border rounded-2xl p-4 shadow-card hover:shadow-card-hover transition-all duration-300"
+              className="bg-card/80 backdrop-blur-xl border border-border/70 rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-all duration-300"
               style={{ animationDelay: `${index * 60}ms` }}
             >
-              {/* Top row: logo left, ETA right */}
               <div className="flex items-center justify-between gap-3">
                 {logo ? (
                   <img
@@ -191,25 +180,18 @@ export default function CompareResults({
                 </div>
               </div>
 
-              {/* Second row: ride type left, price right */}
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-muted-foreground truncate">
-                    {rideType}
-                  </div>
+                  <div className="text-sm font-medium text-muted-foreground truncate">{rideType}</div>
                 </div>
-
-                <div className="text-2xl font-semibold text-foreground">
-                  {priceText}
-                </div>
+                <div className="text-3xl font-bold text-foreground">{priceText}</div>
               </div>
 
-              {/* CTA */}
               <a
                 href={deepLink}
                 target="_blank"
                 rel="noreferrer"
-                className={primaryBtn + " w-full mt-3"}
+                className={primaryBtn + " w-full mt-4"}
               >
                 Continue in App
               </a>

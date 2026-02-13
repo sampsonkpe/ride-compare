@@ -45,7 +45,6 @@ export default function BottomSheet({
   const [translatePx, setTranslatePx] = useState(sheetHeightPx);
   const [isDragging, setIsDragging] = useState(false);
 
-  // lock body scroll
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -55,7 +54,6 @@ export default function BottomSheet({
     };
   }, [open]);
 
-  // open/close position
   useEffect(() => {
     if (!open) {
       setTranslatePx(sheetHeightPx);
@@ -65,7 +63,6 @@ export default function BottomSheet({
     setTranslatePx(target);
   }, [open, initialSnap, snapTranslatePx, sheetHeightPx]);
 
-  // ESC close
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -86,6 +83,7 @@ export default function BottomSheet({
     dragRef.current.active = true;
     dragRef.current.startY = clientY;
     dragRef.current.startTranslate = translatePx;
+    dragRef.current.translate = translatePx;
   };
 
   const moveDrag = (clientY) => {
@@ -102,13 +100,11 @@ export default function BottomSheet({
 
     const cur = dragRef.current.translate;
 
-    // close if dragged down enough
     if (cur > sheetHeightPx * 0.88) {
       onClose?.();
       return;
     }
 
-    // snap to nearest
     let best = 0;
     let bestDist = Infinity;
     snapTranslatePx.forEach((px, idx) => {
@@ -125,8 +121,10 @@ export default function BottomSheet({
   if (!open) return null;
 
   const iconBtn =
-    "p-2 rounded-full hover:bg-muted transition-colors " +
+    "p-2 rounded-full hover:bg-muted/60 transition-colors " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  const canAddStop = typeof onAddStop === "function";
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex }}>
@@ -139,12 +137,12 @@ export default function BottomSheet({
           position: "absolute",
           inset: 0,
           background: "rgba(0,0,0,0.35)",
-          backdropFilter: "blur(6px)",
+          backdropFilter: "blur(10px)",
           border: "none",
         }}
       />
 
-      {/* Sheet wrapper (centred width) */}
+      {/* Sheet wrapper */}
       <div className={`absolute left-0 right-0 bottom-0 mx-auto w-full ${maxWidthClass} px-4`}>
         <div
           role="dialog"
@@ -153,16 +151,16 @@ export default function BottomSheet({
             height: sheetHeightPx,
             transform: `translateY(${translatePx}px)`,
             transition: isDragging ? "none" : "transform 220ms ease-out",
-            background: "hsl(var(--card))",
+            background: "hsl(var(--card) / 0.86)",
+            backdropFilter: "blur(18px)",
             color: "hsl(var(--foreground))",
             borderTopLeftRadius: 18,
             borderTopRightRadius: 18,
             boxShadow: "0 -20px 60px rgba(0,0,0,0.35)",
             overflow: "hidden",
-            borderTop: "1px solid hsl(var(--border))",
+            borderTop: "1px solid hsl(var(--border) / 0.85)",
           }}
         >
-          {/* Handle / Drag area */}
           <div
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -171,10 +169,9 @@ export default function BottomSheet({
             onPointerMove={(e) => moveDrag(e.clientY)}
             onPointerUp={endDrag}
             style={{
-              padding: "10px 12px 10px",
+              padding: "10px 12px 6px",
               userSelect: "none",
               cursor: "grab",
-              borderBottom: "1px solid hsl(var(--border))",
             }}
           >
             <div
@@ -186,16 +183,29 @@ export default function BottomSheet({
                 background: "hsl(var(--muted-foreground) / 0.35)",
               }}
             />
+          </div>
 
-            <div className="mt-2 flex items-center justify-between gap-2">
+          {/* ROUTE HEADER (separate from Available Rides) */}
+          <div
+            className="px-3 pb-3 pt-2 border-b border-border/70"
+            style={{
+              background: "hsl(var(--card) / 0.78)",
+              backdropFilter: "blur(16px)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
               <button type="button" onClick={onClose} className={iconBtn} aria-label="Close">
                 <X className="h-5 w-5" />
               </button>
 
-              <div className="min-w-0 flex-1 text-center text-sm font-semibold truncate">
-                <span className="text-foreground">{pickupText}</span>{" "}
-                <span className="text-muted-foreground">→</span>{" "}
-                <span className="text-primary">{dropoffText}</span>
+              <div className="min-w-0 flex-1 flex items-center justify-center gap-2 text-sm font-semibold">
+                <span className="min-w-0 max-w-[38%] truncate text-muted-foreground">
+                  {pickupText}
+                </span>
+                <span className="text-muted-foreground">→</span>
+                <span className="min-w-0 max-w-[52%] truncate text-primary">
+                  {dropoffText}
+                </span>
               </div>
 
               <button
@@ -203,9 +213,9 @@ export default function BottomSheet({
                 onClick={() => onAddStop?.()}
                 className={iconBtn}
                 aria-label="Add stop"
-                disabled={typeof onAddStop !== "function"}
-                title={typeof onAddStop === "function" ? "Add stop" : ""}
-                style={typeof onAddStop === "function" ? undefined : { opacity: 0.4, cursor: "default" }}
+                disabled={!canAddStop}
+                title={canAddStop ? "Add stop" : ""}
+                style={!canAddStop ? { opacity: 0.45, cursor: "default" } : undefined}
               >
                 <Plus className="h-5 w-5" />
               </button>
@@ -215,7 +225,7 @@ export default function BottomSheet({
           {/* Content */}
           <div
             style={{
-              height: "calc(100% - 86px)",
+              height: "calc(100% - 106px)",
               overflowY: "auto",
               padding: "12px 16px 18px",
             }}

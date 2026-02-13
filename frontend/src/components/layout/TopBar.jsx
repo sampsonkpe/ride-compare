@@ -84,9 +84,8 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
                 aria-label="Close menu overlay"
               />
 
-              <div className="absolute right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-card-hover overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-card">
-                  <p className="text-xs text-muted-foreground">Signed in as</p>
+              <div className="absolute right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card/30 backdrop-blur-md shadow-card-hover overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-card/70 backdrop-blur-md">
                   <p className="text-sm font-medium truncate text-foreground">{user?.email}</p>
                 </div>
 
@@ -96,7 +95,7 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
                     setMenuOpen(false);
                     navigate("/profile");
                   }}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors inline-flex items-center gap-2 bg-card"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted/60 transition-colors inline-flex items-center gap-2 bg-card/70"
                 >
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   Profile & Places
@@ -109,7 +108,7 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
                     await logout();
                     navigate("/auth");
                   }}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-destructive/10 transition-colors inline-flex items-center gap-2 bg-card"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-destructive/10 transition-colors inline-flex items-center gap-2 bg-card/70"
                 >
                   <LogOut className="h-4 w-4 text-destructive" />
                   <span className="text-destructive">Sign out</span>
@@ -124,7 +123,7 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
 
   if (variant === "auth") {
     return (
-      <header className="w-full py-4 px-4 md:py-6 border-b border-border/60 bg-background/80 backdrop-blur-lg">
+      <header className="w-full py-4 px-4 md:py-6 border-b border-border/60 bg-background/70 backdrop-blur-lg">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate("/")}
@@ -145,7 +144,7 @@ export default function TopBar({ variant = "app", onOpenAlerts }) {
 
   if (variant === "profile") {
     return (
-      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background/70 backdrop-blur-lg">
         <div className="max-w-lg mx-auto h-14 px-4 flex items-center justify-between">
           <button
             type="button"

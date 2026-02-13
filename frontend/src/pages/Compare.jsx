@@ -178,13 +178,13 @@ export default function Compare() {
   return (
     <>
       {/* Hero */}
-      <div className="text-center mb-8 md:mb-10 animate-fade-in-up">
-        <h1 className="text-2xl md:text-4xl font-semibold mb-2">{greeting}</h1>
-        <p className="text-muted-foreground text-base md:text-lg">{tagline}</p>
+      <div className="text-center mb-7 md:mb-9 animate-fade-in-up">
+        <h1 className="text-xl md:text-3xl font-semibold mb-2">{greeting}</h1>
+        <p className="text-muted-foreground text-sm md:text-base">{tagline}</p>
       </div>
 
-      {/* Form */}
-      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card space-y-4 animate-fade-in-up">
+      {/* Form card */}
+      <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-xl p-4 sm:p-6 shadow-card space-y-4 animate-fade-in-up">
         <div>
           <LocationInput
             label="Pickup"
@@ -213,10 +213,11 @@ export default function Compare() {
           onClick={handleCompare}
           disabled={!canCompare}
           className={[
-            "w-full inline-flex items-center justify-center gap-2 min-h-13 px-6 rounded-xl text-sm font-semibold",
-            "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            !canCompare ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted active:scale-100" : "",
+            "w-full inline-flex items-center justify-center gap-2 min-h-[52px] px-6 rounded-xl text-sm font-semibold",
+            canCompare
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]"
+              : "bg-muted/80 text-muted-foreground cursor-not-allowed",
+            "transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           ].join(" ")}
           type="button"
         >
@@ -243,6 +244,7 @@ export default function Compare() {
         onClose={() => setSheetOpen(false)}
         pickupText={pickupText}
         dropoffText={dropoffText}
+        onAddStop={() => toast("Stops are coming next 👀", { icon: "➕" })}
         snapPoints={[0.18, 0.66, 0.92]}
         initialSnap={1}
         maxWidthClass="max-w-lg"

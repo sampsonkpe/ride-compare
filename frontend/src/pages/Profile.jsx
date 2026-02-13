@@ -88,6 +88,7 @@ export default function Profile() {
     try {
       const data = await favouritesService.getFavourites();
       setFavourites(Array.isArray(data) ? data : []);
+      // If empty, no toast — it’s a valid state.
     } catch {
       toast.error("Failed to load saved places");
     } finally {
@@ -145,11 +146,8 @@ export default function Profile() {
 
   const buildPayloadVariants = ({ finalLabel, address, lat, lng, type }) => {
     const v1 = { type, label: finalLabel, address, lat, lng };
-
-    // Common alternates
     const v2 = { place_type: type, name: finalLabel, address, latitude: lat, longitude: lng };
     const v3 = { type, label: finalLabel, location: { address, lat, lng } };
-
     return [v1, v2, v3];
   };
 
@@ -280,7 +278,16 @@ export default function Profile() {
                 <div key={fav.id} className={`${card} p-4`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <Icon
+                        className={[
+                          "h-5 w-5 shrink-0 mt-0.5",
+                          t === "HOME"
+                            ? "text-primary"
+                            : t === "WORK"
+                            ? "text-emerald-500"
+                            : "text-violet-400",
+                        ].join(" ")}
+                      />
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{title}</p>
                         <p className="text-sm text-muted-foreground truncate">{addressText}</p>
@@ -325,7 +332,7 @@ export default function Profile() {
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8" role="dialog" aria-modal="true">
           <button
-            className="absolute inset-0 bg-background/80"
+            className="absolute inset-0 bg-background/70"
             onClick={closeModal}
             type="button"
             aria-label="Close modal overlay"
@@ -383,7 +390,7 @@ export default function Profile() {
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={defaultLabelForType || "e.g. Gym"}
-                  className="w-full h-11 px-4 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground/80 outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-11 px-4 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/60 outline-none focus:ring-2 focus:ring-ring"
                   disabled={saving}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">For Home/Work, you can leave this empty.</p>
