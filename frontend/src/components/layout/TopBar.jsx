@@ -1,64 +1,56 @@
 import { useContext, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Bell,
-  ChevronLeft,
-  LogIn,
-  LogOut,
-  User,
-  MapPin,
-  X,
-} from "lucide-react";
+import { Bell, ChevronLeft, LogOut, User, MapPin } from "lucide-react";
 
 import { AuthContext } from "../../context/AuthContext";
 import logo from "../../assets/ridecomparelogo.png";
 import ThemeToggle from "../ThemeToggle";
 
 export default function TopBar({
-  variant = "app", // "app" | "auth" | "profile"
-  onOpenAlerts, // optional
+  variant = "app",
+  onOpenAlerts,
 }) {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
-
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const logoEl = (
+  const iconBtn =
+    "h-10 w-10 inline-flex items-center justify-center rounded-xl hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  const headerBase =
+    "sticky top-0 z-50 h-14 border-b border-border bg-background/85 backdrop-blur-lg";
+
+  const LogoButton = (
     <button
       type="button"
       onClick={() => navigate("/compare")}
       className="inline-flex items-center"
-      aria-label="Go to Compare"
     >
       <img
         src={logo}
         alt="RideCompare"
-        className="h-7 md:h-8 w-auto select-none dark:invert dark:brightness-200"
+        className="h-7 w-auto select-none logo-dark-invert"
         draggable={false}
       />
     </button>
   );
 
-  const rightActions = useMemo(() => {
-    const iconBtn =
-      "p-2 rounded-full hover:bg-muted transition-colors " +
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const AlertsButton =
+    typeof onOpenAlerts === "function" ? (
+      <button type="button" className={iconBtn} onClick={onOpenAlerts}>
+        <Bell className="h-5 w-5 text-muted-foreground" />
+      </button>
+    ) : null;
 
+  const rightActions = useMemo(() => {
     if (!user) {
       return (
         <div className="flex items-center gap-2">
-          {typeof onOpenAlerts === "function" ? (
-            <button type="button" className={iconBtn} onClick={onOpenAlerts} aria-label="Open alerts">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-            </button>
-          ) : null}
-
+          {AlertsButton}
           <ThemeToggle />
-
           <button
-            type="button"
             onClick={() => navigate("/auth")}
-            className="px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
+            className="h-10 px-4 rounded-xl text-sm font-semibold text-primary hover:bg-primary/10 transition"
           >
             Sign in
           </button>
@@ -68,92 +60,73 @@ export default function TopBar({
 
     return (
       <div className="flex items-center gap-2">
-        {typeof onOpenAlerts === "function" ? (
-          <button type="button" className={iconBtn} onClick={onOpenAlerts} aria-label="Open alerts">
-            <Bell className="h-5 w-5 text-muted-foreground" />
-          </button>
-        ) : null}
-
+        {AlertsButton}
         <ThemeToggle />
 
         <div className="relative">
           <button
             type="button"
-            className={[
-              iconBtn,
-              "bg-primary/10",
-              menuOpen ? "ring-2 ring-ring" : "",
-            ].join(" ")}
+            className={[iconBtn, "bg-primary/10"].join(" ")}
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label="User menu"
           >
             <User className="h-5 w-5 text-primary" />
           </button>
 
-          {menuOpen ? (
+          {menuOpen && (
             <>
               <button
-                type="button"
-                className="fixed inset-0 z-40 cursor-default"
+                className="fixed inset-0 z-40"
                 onClick={() => setMenuOpen(false)}
-                aria-label="Close menu overlay"
               />
-
-              <div className="absolute right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-card-hover overflow-hidden">
+              <div className="absolute right-0 mt-2 z-50 w-64 rounded-2xl border border-border bg-card shadow-card-hover overflow-hidden">
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-xs text-muted-foreground">Signed in as</p>
-                  <p className="text-sm font-medium truncate">{user?.email}</p>
+                  <p className="text-sm font-semibold truncate">{user?.email}</p>
                 </div>
 
                 <button
-                  type="button"
                   onClick={() => {
                     setMenuOpen(false);
                     navigate("/profile");
                   }}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors inline-flex items-center gap-2"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition inline-flex items-center gap-2"
                 >
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   Profile & places
                 </button>
 
                 <button
-                  type="button"
                   onClick={async () => {
                     setMenuOpen(false);
                     await logout();
                     navigate("/auth");
                   }}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors inline-flex items-center gap-2"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition inline-flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4 text-muted-foreground" />
                   Sign out
                 </button>
               </div>
             </>
-          ) : null}
+          )}
         </div>
       </div>
     );
-  }, [user, onOpenAlerts, navigate, logout, menuOpen]);
+  }, [user, AlertsButton, logout, menuOpen, navigate]);
 
-  // Header variants
   if (variant === "auth") {
     return (
-      <header className="w-full py-4 px-4 md:py-6 border-b border-border/60 bg-background/80 backdrop-blur-lg">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+      <header className={headerBase}>
+        <div className="mx-auto max-w-lg h-14 px-4 flex items-center justify-between">
           <button
             onClick={() => navigate("/")}
-            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
-            aria-label="Go back"
-            type="button"
+            className={iconBtn}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
 
-          {logoEl}
-
-          <div className="w-9" />
+          {LogoButton}
+          <div className="w-10" />
         </div>
       </header>
     );
@@ -161,40 +134,30 @@ export default function TopBar({
 
   if (variant === "profile") {
     return (
-      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background/80 backdrop-blur-lg">
-        <div className="max-w-lg mx-auto h-14 px-4 flex items-center justify-between">
+      <header className={headerBase}>
+        <div className="mx-auto max-w-lg h-14 px-4 flex items-center justify-between">
           <button
-            type="button"
             onClick={() => navigate("/compare")}
-            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
-            aria-label="Back"
+            className={iconBtn}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
 
           <div className="font-semibold">Profile</div>
 
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
       </header>
     );
   }
 
-  // default: app header
   return (
-    <header className="w-full py-4 px-4 md:py-6">
-      <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
-        {/* left */}
-        <div className="flex items-center gap-2">{logoEl}</div>
-
-        {/* centre */}
-        <div className="hidden sm:block text-xs md:text-sm text-muted-foreground">
+    <header className={headerBase}>
+      <div className="mx-auto max-w-lg h-14 px-4 flex items-center justify-between gap-3">
+        {LogoButton}
+        <div className="hidden sm:block text-xs text-muted-foreground font-medium">
           Compare. Choose. Ride.
         </div>
-
-        {/* right */}
         {rightActions}
       </div>
     </header>

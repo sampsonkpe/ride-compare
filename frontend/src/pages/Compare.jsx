@@ -1,46 +1,19 @@
 import { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { X, Plus } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
-import { ThemeContext } from "../context/ThemeContext";
 import ridesService from "../services/ridesService";
 import toast from "react-hot-toast";
-import logo from "../assets/ridecomparelogo.png";
 import LocationInput from "../components/rides/LocationInput";
-import { LogIn, LogOut, UserCog } from "lucide-react";
 
 import BottomSheet from "../components/overlays/BottomSheet";
 import CompareResults from "./CompareResults";
 
-function loadGoogleMapsScript() {
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  if (!key) throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY in .env");
-
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve();
-
-    const existing = document.getElementById("google-maps-script");
-    if (existing) {
-      existing.addEventListener("load", resolve);
-      existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")));
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-maps-script";
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Failed to load Google Maps"));
-    document.head.appendChild(script);
-  });
-}
-
-async function geocodeAddress(address) {
+async function geocodeAddressIfAvailable(address) {
   const trimmed = (address || "").trim();
   if (!trimmed) return null;
-
-  await loadGoogleMapsScript();
+  
+  if (!window.google?.maps?.Geocoder) return null;
 
   return new Promise((resolve) => {
     const geocoder = new window.google.maps.Geocoder();
@@ -72,19 +45,50 @@ function extractErrorMessage(err) {
   return "Failed to compare rides";
 }
 
+function RoutePill({ text, onClose, onAddStop }) {
+  return (
+    <div
+      className="w-full rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-card px-3 py-2"
+      style={{ boxShadow: "0 14px 44px rgba(0,0,0,0.28)" }}
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rc-icon-btn"
+          aria-label="Close results"
+          title="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">{text}</div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onAddStop}
+          className="rc-icon-btn"
+          aria-label="Add stop (coming soon)"
+          title="Add stop (coming soon)"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Compare() {
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
   const [dropoff, setDropoff] = useState({ address: "", lat: null, lng: null });
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetData, setSheetData] = useState({ rides: [], pickup: null, dropoff: null });
 
-  const { user, logout } = useContext(AuthContext);
-  const themeCtx = useContext(ThemeContext);
-  const isDark = themeCtx?.isDark;
-
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const pickupRef = useRef(null);
@@ -114,28 +118,17 @@ export default function Compare() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (user) loadHistory();
-    else setHistory([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const loadHistory = async () => {
-    try {
-      const data = await ridesService.getHistory();
-      setHistory(Array.isArray(data) ? data : []);
-    } catch {}
-  };
-
   const ensureCoords = async (loc) => {
     const address = loc?.address?.trim();
     if (!address) return null;
 
+    // If LocationInput already gave coords, use them.
     if (loc.lat != null && loc.lng != null) {
       return { address, lat: Number(loc.lat), lng: Number(loc.lng) };
     }
 
-    const coords = await geocodeAddress(address);
+    // Otherwise attempt geocode ONLY if maps exists (no duplicate loader here).
+    const coords = await geocodeAddressIfAvailable(address);
     if (!coords) return null;
 
     return { address, lat: Number(coords.lat), lng: Number(coords.lng) };
@@ -163,145 +156,111 @@ export default function Compare() {
       }
 
       const data = await ridesService.compareRides(pickupFinal, dropoffFinal);
-      console.log("COMPARE RESPONSE:", data);
-
       const ridesArr = Array.isArray(data?.rides) ? data.rides : [];
 
       setSheetData({ rides: ridesArr, pickup: pickupFinal, dropoff: dropoffFinal });
       setSheetOpen(true);
-      console.log("SHEET OPEN -> TRUE");
-
-      if (user) loadHistory();
     } catch (err) {
-      console.error("COMPARE ERROR:", err);
       toast.error(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const headerRight = useMemo(() => {
-    const ghostBtn =
-      "inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-medium " +
-      "text-muted-foreground hover:text-foreground hover:bg-accent transition " +
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-    if (user) {
-      return (
-        <>
-          <span className="hidden sm:inline text-muted-foreground text-sm">{user.email}</span>
-
-          <button onClick={() => navigate("/profile")} className={ghostBtn} type="button">
-            <UserCog className="h-4 w-4" />
-            Profile
-          </button>
-
-          <button
-            onClick={async () => {
-              await logout();
-              navigate("/auth");
-            }}
-            className={ghostBtn}
-            type="button"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
-        </>
-      );
-    }
-
-    return (
-      <button onClick={() => navigate("/auth")} className={ghostBtn} type="button">
-        <LogIn className="h-4 w-4" />
-        Sign in
-      </button>
-    );
-  }, [user, navigate, logout]);
-
   const pickupText = sheetData?.pickup?.address || pickup?.address || "Pickup";
   const dropoffText = sheetData?.dropoff?.address || dropoff?.address || "Dropoff";
 
+  const routePillText = useMemo(() => {
+    const left = (pickupText || "Pickup").split(",")[0]?.trim() || "Pickup";
+    const right = (dropoffText || "Dropoff").split(",")[0]?.trim() || "Dropoff";
+    return `${left} → ${right}`;
+  }, [pickupText, dropoffText]);
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="bg-card border-b border-border">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/compare")}
-            className="flex items-center gap-2 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            type="button"
-          >
-            <img
-              src={logo}
-              alt="RideCompare"
-              className={`!h-8 !w-auto object-contain ${isDark ? "logo-dark-invert" : ""}`}
-            />
-          </button>
+    <>
+      {/* Hero */}
+      <div className="text-center mb-6 animate-fade-in-up">
+        <h1 className="text-[22px] md:text-3xl font-bold leading-tight mb-1">
+          Compare rides instantly
+        </h1>
+        <p className="text-sm md:text-base text-muted-foreground">
+          Find the best price across all platforms
+        </p>
+      </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">{headerRight}</div>
+      {/* Form */}
+      <div className="rc-card p-5 space-y-4 animate-fade-in-up">
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground mb-2">
+            Pickup
+          </label>
+          <LocationInput
+            value={pickup}
+            onChange={setPickup}
+            placeholder="Enter pickup location"
+            icon="pickup"
+            showCurrentLocation
+            inputRef={pickupRef}
+            onLocationError={() => toast.error("Location access unavailable")}
+          />
         </div>
-      </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-8 sm:mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">Compare rides instantly</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">Find the best price across all platforms</p>
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground mb-2">
+            Dropoff
+          </label>
+          <LocationInput
+            value={dropoff}
+            onChange={setDropoff}
+            placeholder="Where are you going?"
+            icon="dropoff"
+            onLocationError={() => toast.error("Location search unavailable")}
+          />
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">Pickup</label>
-            <LocationInput
-              value={pickup}
-              onChange={setPickup}
-              placeholder="Enter pickup location"
-              icon="pickup"
-              showCurrentLocation
-              inputRef={pickupRef}
-              onLocationError={() => toast.error("Location access unavailable")}
+        <button
+          onClick={handleCompare}
+          disabled={loading}
+          className="rc-btn-primary w-full"
+          type="button"
+        >
+          {loading ? (
+            <>
+              <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              Finding rides…
+            </>
+          ) : (
+            "Compare Rides"
+          )}
+        </button>
+
+        {!user ? (
+          <p className="text-xs text-muted-foreground text-center">
+            Tip: Sign in to save places and alerts.
+          </p>
+        ) : null}
+      </div>
+
+      {/* Floating route pill ABOVE the sheet */}
+      {sheetOpen ? (
+        <div className="fixed left-0 right-0 z-[10001] px-4" style={{ top: 72 }}>
+          <div className="mx-auto w-full max-w-lg">
+            <RoutePill
+              text={routePillText}
+              onClose={() => setSheetOpen(false)}
+              onAddStop={() => toast("Stops coming next.", { icon: "➕" })}
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">Dropoff</label>
-            <LocationInput
-              value={dropoff}
-              onChange={setDropoff}
-              placeholder="Where are you going?"
-              icon="dropoff"
-              onLocationError={() => toast.error("Location search unavailable")}
-            />
-          </div>
-
-          <button
-            onClick={handleCompare}
-            disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 min-h-[52px] px-4 rounded-xl text-sm font-semibold
-              bg-primary text-primary-foreground hover:opacity-90 transition
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-              disabled:opacity-50 disabled:pointer-events-none"
-            type="button"
-          >
-            {loading ? "Finding rides…" : "Compare Rides"}
-          </button>
         </div>
-      </main>
+      ) : null}
 
-      {/* TEST: force open */}
-      <button
-        type="button"
-        onClick={() => setSheetOpen(true)}
-        className="fixed bottom-4 right-4 z-[9999] bg-black text-white px-4 py-2 rounded"
-      >
-        TEST SHEET
-      </button>
-
+      {/* Bottom sheet */}
       <BottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Available Rides"
+        title="Available rides"
         subtitle={`${pickupText} → ${dropoffText}`}
-        snapPoints={[0.22, 0.66, 0.92]}
+        snapPoints={[0.18, 0.66, 0.92]}
         initialSnap={1}
       >
         <CompareResults
@@ -309,9 +268,8 @@ export default function Compare() {
           rides={sheetData.rides}
           pickup={sheetData.pickup}
           dropoff={sheetData.dropoff}
-          onClose={() => setSheetOpen(false)}
         />
       </BottomSheet>
-    </div>
+    </>
   );
 }

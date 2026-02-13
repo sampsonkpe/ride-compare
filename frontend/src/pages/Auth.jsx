@@ -2,66 +2,29 @@ import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { AuthContext } from "../context/AuthContext";
-import logo from "../assets/ridecomparelogo.png";
 
 const emailSchema = z.string().email("Please enter a valid email address");
-const passwordSchema = z
-  .string()
-  .min(6, "Password must be at least 6 characters");
+const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
-const loginGreetings = [
-  "Welcome back",
-  "Hey again",
-  "Good to see you",
-  "Hello there",
-  "Hi again",
-  "Nice to see you",
-  "Hey you",
-];
-const signupGreetings = [
-  "Create account",
-  "Join us",
-  "Get started",
-  "Let's go",
-  "Welcome aboard",
-  "Sign up",
-  "Start here",
-];
+const loginGreetings = ["Welcome back", "Hey again", "Good to see you", "Hello there", "Hi again", "Nice to see you", "Hey you"];
+const signupGreetings = ["Create account", "Join us", "Get started", "Let's go", "Welcome aboard", "Sign up", "Start here"];
 
-const loginSubtitles = [
-  "Sign in to access your saved data",
-  "Sign in to continue where you left off",
-  "Sign in to unlock all features",
-];
-const signupSubtitles = [
-  "Sign up to save your price alerts",
-  "Create an account to sync across devices",
-  "Join to save your favorite locations",
-];
+const loginSubtitles = ["Sign in to access your saved data", "Sign in to continue where you left off", "Sign in to unlock all features"];
+const signupSubtitles = ["Sign up to save your price alerts", "Create an account to sync across devices", "Join to save your favourite locations"];
 
 function mapAuthError(err) {
   const apiData = err?.response?.data;
 
-  if (apiData?.password)
-    return typeof apiData.password === "string"
-      ? apiData.password
-      : apiData.password?.[0];
-  if (apiData?.email)
-    return typeof apiData.email === "string" ? apiData.email : apiData.email?.[0];
-  if (apiData?.full_name)
-    return typeof apiData.full_name === "string"
-      ? apiData.full_name
-      : apiData.full_name?.[0];
+  if (apiData?.password) return typeof apiData.password === "string" ? apiData.password : apiData.password?.[0];
+  if (apiData?.email) return typeof apiData.email === "string" ? apiData.email : apiData.email?.[0];
+  if (apiData?.full_name) return typeof apiData.full_name === "string" ? apiData.full_name : apiData.full_name?.[0];
   if (apiData?.detail) return apiData.detail;
   if (apiData?.error) return apiData.error;
 
   const msg = err?.message || "Something went wrong";
   const lower = String(msg).toLowerCase();
 
-  if (
-    lower.includes("invalid") &&
-    (lower.includes("credentials") || lower.includes("password"))
-  ) {
+  if (lower.includes("invalid") && (lower.includes("credentials") || lower.includes("password"))) {
     return "Invalid email or password. Please try again.";
   }
   if (lower.includes("already") && (lower.includes("exists") || lower.includes("registered"))) {
@@ -170,162 +133,131 @@ export default function Auth() {
     "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <header className="w-full bg-card border-b border-border">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div className="w-full">
+      <div className="text-center mb-6">
+        <h1 className="text-[22px] font-bold leading-tight mb-1">{greeting}</h1>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      </div>
+
+      <div className="rc-card p-5">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {!isLogin && (
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-2">
+                Full name
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={150}
+                className={inputClass}
+                placeholder="Your full name"
+                required
+              />
+            </div>
+          )}
+
+          {!isLogin && (
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-2">
+                Phone (optional)
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                maxLength={30}
+                className={inputClass}
+                placeholder="Your phone number"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              maxLength={255}
+              className={inputClass}
+              placeholder="Your email address"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={6}
+                className={`${inputClass} pr-12`}
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-9 px-2 rounded-lg
+                  text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-xl border border-destructive bg-card">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          <button type="submit" disabled={isSubmitting} className="rc-btn-primary w-full">
+            {isSubmitting ? (
+              <>
+                <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                {isLogin ? "Signing in..." : "Creating account..."}
+              </>
+            ) : isLogin ? (
+              "Sign In"
+            ) : (
+              "Create Account"
+            )}
+          </button>
+        </form>
+
+        <div className="mt-5 text-center">
+          <p className="text-muted-foreground text-sm">
+            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+            <button
+              onClick={toggleMode}
+              className="text-primary font-semibold hover:underline"
+              type="button"
+            >
+              {isLogin ? "Sign up" : "Sign in"}
+            </button>
+          </p>
+        </div>
+
+        <div className="mt-3 text-center">
           <button
-            onClick={() => navigate(nextPath)}
-            className="h-10 w-10 inline-flex items-center justify-center rounded-xl hover:bg-accent transition
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Go back"
+            onClick={() => navigate("/compare")}
+            className="text-muted-foreground text-sm hover:text-foreground transition-colors"
             type="button"
           >
-            ←
+            Continue without signing in →
           </button>
-
-          <img src={logo} alt="RideCompare" className="h-7 md:h-8" />
-
-          <div className="w-10" />
         </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">{greeting}</h1>
-            <p className="text-muted-foreground">{subtitle}</p>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Full name
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    maxLength={150}
-                    className={inputClass}
-                    placeholder="Your full name"
-                    required
-                  />
-                </div>
-              )}
-
-              {!isLogin && (
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Phone (optional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    maxLength={30}
-                    className={inputClass}
-                    placeholder="Your phone number"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  maxLength={255}
-                  className={inputClass}
-                  placeholder="Your email address"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Password
-                </label>
-
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={6}
-                    className={`${inputClass} pr-12`}
-                    placeholder="••••••••"
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-9 px-2 rounded-lg
-                      text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? "Hide" : "Show"}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-xl border border-destructive bg-card">
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold
-                  bg-primary text-primary-foreground hover:opacity-90 transition
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-                  disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {isLogin ? "Signing in..." : "Creating account..."}
-                  </>
-                ) : isLogin ? (
-                  "Sign In"
-                ) : (
-                  "Create Account"
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-muted-foreground text-sm">
-                {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-                <button
-                  onClick={toggleMode}
-                  className="text-primary font-medium hover:underline"
-                  type="button"
-                >
-                  {isLogin ? "Sign up" : "Sign in"}
-                </button>
-              </p>
-            </div>
-
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => navigate("/compare")}
-                className="text-muted-foreground text-sm hover:text-foreground transition-colors"
-                type="button"
-              >
-                Continue without signing in →
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

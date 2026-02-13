@@ -6,7 +6,6 @@ import { ThemeProvider } from "./context/ThemeContext";
 import Splash from "./pages/Splash";
 import Auth from "./pages/Auth";
 import Compare from "./pages/Compare";
-import CompareResults from "./pages/CompareResults";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -20,14 +19,13 @@ export default function App() {
         <AuthProvider>
           <Toaster position="top-center" />
           <Routes>
-            {/* Splash stays full screen */}
             <Route path="/" element={<Splash />} />
 
             {/* Auth (single page: login + signup) */}
             <Route
               path="/auth"
               element={
-                <AppShell header="auth" maxWidth="max-w-sm">
+                <AppShell header="auth" maxWidth="max-w-sm" padding="compact">
                   <Auth />
                 </AppShell>
               }
@@ -39,28 +37,20 @@ export default function App() {
             <Route
               path="/compare"
               element={
-                <AppShell header="app" maxWidth="max-w-lg">
+                <AppShell header="app" maxWidth="max-w-lg" padding="compact">
                   <Compare />
                 </AppShell>
               }
             />
-            
-            {/* Compare Results */}
-            <Route
-              path="/compare/results"
-              element={
-                <AppShell header="app" maxWidth="max-w-lg">
-                  <CompareResults />
-                </AppShell>
-              }
-            />
 
-            {/* Profile (merged) */}
+            <Route path="/compare/results" element={<Navigate to="/compare" replace />} />
+
+            {/* Profile (protected) */}
             <Route
               path="/profile"
               element={
                 <RequireAuth>
-                  <AppShell header="profile" maxWidth="max-w-lg" padded={false}>
+                  <AppShell header="profile" maxWidth="max-w-lg" padding="compact">
                     <Profile />
                   </AppShell>
                 </RequireAuth>
@@ -70,6 +60,7 @@ export default function App() {
             {/* Legacy favourites route -> profile */}
             <Route path="/favourites" element={<Navigate to="/profile" replace />} />
 
+            {/* Not found */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -10,20 +10,39 @@ export default function NotFound() {
   }, [location.pathname]);
 
   const primaryBtn =
-    "inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold " +
-    "bg-primary text-primary-foreground hover:opacity-90 transition " +
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+    "inline-flex items-center justify-center gap-2 min-h-[50px] px-6 rounded-xl text-sm font-semibold " +
+    "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  const secondaryBtn =
+    "inline-flex items-center justify-center gap-2 min-h-[50px] px-6 rounded-xl text-sm font-semibold " +
+    "border border-border bg-card hover:bg-muted transition " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4 py-10">
-      <div className="w-full max-w-md text-center">
-        <div className="bg-card border border-border rounded-2xl shadow-card p-6">
-          <h1 className="text-4xl font-bold mb-3">404</h1>
-          <p className="text-muted-foreground mb-6">Oops! Page not found</p>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto w-full max-w-lg px-4 py-10">
+        <div className="rounded-2xl border border-border bg-card shadow-card p-6 text-center">
+          <div className="text-sm text-muted-foreground">Page not found</div>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight">404</h1>
 
-          <button onClick={() => navigate("/compare")} className={primaryBtn} type="button">
-            Return to Compare
-          </button>
+          <p className="mt-3 text-sm text-muted-foreground">
+            The page you tried to open doesn’t exist.
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-3">
+            <button onClick={() => navigate("/compare")} className={primaryBtn} type="button">
+              Go to Compare
+            </button>
+
+            <button onClick={() => navigate(-1)} className={secondaryBtn} type="button">
+              Go back
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 text-center text-xs text-muted-foreground">
+          {location.pathname}
         </div>
       </div>
     </div>

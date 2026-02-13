@@ -10,7 +10,8 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={() => themeCtx?.toggleTheme?.()}
-      className="p-2 rounded-full hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="h-10 w-10 inline-flex items-center justify-center rounded-full hover:bg-muted transition-colors
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Light mode" : "Dark mode"}
     >

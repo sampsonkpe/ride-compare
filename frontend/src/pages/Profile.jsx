@@ -226,32 +226,24 @@ export default function Profile() {
     }
   };
 
-  const card = "bg-card border border-border rounded-2xl shadow-card";
-
-  const primaryBtn =
-    "inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold " +
-    "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition " +
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
-
-  const iconBtn =
-    "p-2 rounded-full hover:bg-muted transition-colors " +
+  const iconBtn = "rc-icon-btn";
+  const primaryBtn = "rc-btn-primary";
+  const destructiveOutline =
+    "w-full min-h-[50px] px-6 rounded-xl border border-destructive/30 text-destructive " +
+    "hover:bg-destructive/10 transition inline-flex items-center justify-center gap-2 font-semibold " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-  const destructiveOutline =
-    "w-full min-h-[48px] px-4 rounded-xl border border-destructive/30 text-destructive " +
-    "hover:bg-destructive/10 transition inline-flex items-center justify-center gap-2 font-semibold";
-
   return (
-    <div className="px-4 pb-10">
-      <div className="pt-6 space-y-6">
+    <div className="pb-10">
+      <div className="space-y-6">
         {/* User card */}
-        <div className={`${card} p-5`}>
-          <div className="flex items-center gap-2">
+        <div className="rc-card p-5">
+          <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm text-muted-foreground">Signed in as</p>
+              <p className="text-xs text-muted-foreground font-semibold">Signed in as</p>
               <p className="font-semibold truncate">{user?.email}</p>
             </div>
           </div>
@@ -283,7 +275,7 @@ export default function Profile() {
               const addressText = extractAddress(fav) || "—";
 
               return (
-                <div key={fav.id} className={`${card} p-4`}>
+                <div key={fav.id} className="rc-card rc-card-hover p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -299,10 +291,7 @@ export default function Profile() {
                       </button>
                       <button
                         type="button"
-                        className={[
-                          iconBtn,
-                          "hover:bg-destructive/10",
-                        ].join(" ")}
+                        className={[iconBtn, "hover:bg-destructive/10"].join(" ")}
                         onClick={() => handleDelete(fav.id)}
                         aria-label="Delete"
                       >
@@ -358,7 +347,7 @@ export default function Profile() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">Type</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-2">Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { key: "HOME", label: "Home", Icon: Home },
@@ -387,19 +376,19 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">Label</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-2">Label</label>
                 <input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={defaultLabelForType || "e.g. Gym"}
-                  className="w-full h-11 px-4 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
                   disabled={saving}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">For Home/Work, you can leave this empty.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">Location</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-2">Location</label>
                 <LocationInput
                   value={normalizeAddressValue(locationValue)}
                   onChange={(v) => setLocationValue(normalizeAddressValue(v))}
@@ -415,7 +404,8 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="h-11 px-4 rounded-xl border border-border bg-card hover:bg-muted transition font-semibold"
+                className="min-h-[50px] px-6 rounded-xl border border-border bg-card hover:bg-muted transition font-semibold
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 disabled={saving}
               >
                 Cancel

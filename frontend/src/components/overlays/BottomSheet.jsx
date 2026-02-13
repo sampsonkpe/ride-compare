@@ -11,9 +11,12 @@ export default function BottomSheet({
   title,
   subtitle,
   children,
-  snapPoints = [0.18, 0.58, 0.92],
-  initialSnap = 0,
+  snapPoints = [0.18, 0.66, 0.92],
+  initialSnap = 1,
   zIndex = 9999,
+
+  floatingHeader = null,
+  floatingHeaderOffset = 10, // px gap between sheet top edge and floating header
 }) {
   const dragRef = useRef({
     active: false,
@@ -23,17 +26,26 @@ export default function BottomSheet({
     raf: 0,
   });
 
+  const [vh, setVh] = useState(() => window.innerHeight);
+
+  useEffect(() => {
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const maxSnap = useMemo(() => Math.max(...snapPoints), [snapPoints]);
-  const sheetHeightPx = useMemo(() => Math.round(window.innerHeight * maxSnap), [maxSnap]);
+  const sheetHeightPx = useMemo(() => Math.round(vh * maxSnap), [vh, maxSnap]);
 
   const snapTranslatePx = useMemo(() => {
-    const vh = window.innerHeight;
     const h = Math.round(vh * maxSnap);
     return snapPoints.map((f) => clamp(h - Math.round(vh * f), 0, h));
-  }, [snapPoints, maxSnap]);
+  }, [snapPoints, maxSnap, vh]);
 
   const [translatePx, setTranslatePx] = useState(sheetHeightPx);
+  const [isDragging, setIsDragging] = useState(false);
 
+  // lock body scroll
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -43,14 +55,17 @@ export default function BottomSheet({
     };
   }, [open]);
 
+  // open/close position
   useEffect(() => {
     if (!open) {
       setTranslatePx(sheetHeightPx);
       return;
     }
-    setTranslatePx(snapTranslatePx[initialSnap] ?? snapTranslatePx[0] ?? 0);
+    const target = snapTranslatePx[initialSnap] ?? snapTranslatePx[0] ?? 0;
+    setTranslatePx(target);
   }, [open, initialSnap, snapTranslatePx, sheetHeightPx]);
 
+  // ESC close
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -67,9 +82,11 @@ export default function BottomSheet({
   };
 
   const beginDrag = (clientY) => {
+    setIsDragging(true);
     dragRef.current.active = true;
     dragRef.current.startY = clientY;
     dragRef.current.startTranslate = translatePx;
+    dragRef.current.translate = translatePx;
   };
 
   const moveDrag = (clientY) => {
@@ -82,10 +99,11 @@ export default function BottomSheet({
   const endDrag = () => {
     if (!dragRef.current.active) return;
     dragRef.current.active = false;
+    setIsDragging(false);
 
     const cur = dragRef.current.translate;
 
-    // dragged down enough => close
+    // close if dragged down enough
     if (cur > sheetHeightPx * 0.88) {
       onClose?.();
       return;
@@ -105,26 +123,53 @@ export default function BottomSheet({
     setTranslatePx(snapTranslatePx[best]);
   };
 
+  const sheetTopPx = useMemo(() => {
+    return vh - sheetHeightPx + translatePx;
+  }, [vh, sheetHeightPx, translatePx]);
+
   if (!open) return null;
 
   return createPortal(
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex,
-      }}
-    >
+    <div style={{ position: "fixed", inset: 0, zIndex }}>
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close sheet"
         onClick={onClose}
         style={{
           position: "absolute",
           inset: 0,
           background: "rgba(0,0,0,0.35)",
           backdropFilter: "blur(6px)",
+          border: "none",
         }}
       />
+
+      {/* Floating header */}
+      {floatingHeader ? (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: Math.max(12, sheetTopPx - 56 - floatingHeaderOffset),
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 520,
+              margin: "0 auto",
+              padding: "0 16px",
+              pointerEvents: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {floatingHeader}
+          </div>
+        </div>
+      ) : null}
 
       {/* Sheet */}
       <div
@@ -137,14 +182,16 @@ export default function BottomSheet({
           bottom: 0,
           height: sheetHeightPx,
           transform: `translateY(${translatePx}px)`,
-          transition: "transform 200ms ease-out",
-          background: "var(--rc-sheet-bg, #111827)",
-          color: "white",
+          transition: isDragging ? "none" : "transform 220ms ease-out",
+          background: "hsl(var(--card))",
+          color: "hsl(var(--foreground))",
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
           boxShadow: "0 -20px 60px rgba(0,0,0,0.35)",
           overflow: "hidden",
+          borderTop: "1px solid hsl(var(--border))",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Handle/Header (drag area) */}
         <div
@@ -155,10 +202,10 @@ export default function BottomSheet({
           onPointerMove={(e) => moveDrag(e.clientY)}
           onPointerUp={endDrag}
           style={{
-            padding: "10px 16px 8px",
+            padding: "10px 16px 10px",
             userSelect: "none",
             cursor: "grab",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            borderBottom: "1px solid hsl(var(--border))",
           }}
         >
           <div
@@ -167,11 +214,11 @@ export default function BottomSheet({
               height: 6,
               width: 54,
               borderRadius: 999,
-              background: "rgba(255,255,255,0.22)",
+              background: "hsl(var(--muted-foreground) / 0.35)",
             }}
           />
 
-          {(title || subtitle) ? (
+          {title || subtitle ? (
             <div style={{ marginTop: 10 }}>
               {title ? <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div> : null}
               {subtitle ? (
@@ -184,11 +231,10 @@ export default function BottomSheet({
         {/* Content */}
         <div
           style={{
-            height: "calc(100% - 64px)",
+            height: "calc(100% - 74px)",
             overflowY: "auto",
             padding: "12px 16px 18px",
           }}
-          onClick={(e) => e.stopPropagation()}
         >
           {children}
         </div>

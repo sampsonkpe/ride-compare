@@ -31,8 +31,9 @@ export default function Splash() {
     <div className="min-h-screen bg-background text-foreground">
       <div
         className={[
-          "mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8",
-          "flex min-h-screen flex-col items-center justify-center",
+          "min-h-screen w-full",
+          "flex flex-col items-center justify-center",
+          "px-6",
           "transition-opacity duration-500 ease-out",
           isExiting ? "opacity-0" : "opacity-100",
         ].join(" ")}
@@ -42,15 +43,15 @@ export default function Splash() {
             src={logo}
             alt="RideCompare"
             className={[
-              "h-10 sm:h-12 w-auto select-none splash-float",
-              isDark ? "logo-dark-invert" : "",
+              "h-11 sm:h-12 w-auto select-none splash-float",
+              isDark ? "rc-logo-invert-dark" : "",
             ].join(" ")}
             draggable={false}
           />
 
           <div
             className={[
-              "mt-5 text-center text-base sm:text-lg tracking-wide text-muted-foreground",
+              "mt-5 text-center text-sm sm:text-base tracking-wide text-muted-foreground font-medium",
               "transition-all duration-700 ease-out",
               showTagline ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
             ].join(" ")}
