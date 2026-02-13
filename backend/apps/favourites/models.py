@@ -4,31 +4,33 @@ import uuid
 
 
 class Favourite(models.Model):
-    """Model to store user's favourite routes"""
-    
+
+    class PlaceType(models.TextChoices):
+        HOME = "HOME", "Home"
+        WORK = "WORK", "Work"
+        OTHER = "OTHER", "Other"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favourites')
-    
-    # Pickup location
-    pickup_address = models.CharField(max_length=500)
-    pickup_lat = models.FloatField()
-    pickup_lng = models.FloatField()
-    
-    # Dropoff location
-    dropoff_address = models.CharField(max_length=500)
-    dropoff_lat = models.FloatField()
-    dropoff_lng = models.FloatField()
-    
-    # Optional label (e.g., "Home to Work")
-    label = models.CharField(max_length=100, blank=True, null=True)
-    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favourites",
+    )
+
+    type = models.CharField(max_length=10, choices=PlaceType.choices, default=PlaceType.OTHER)
+    label = models.CharField(max_length=60, blank=True, default="")
+    address = models.CharField(max_length=255)
+    lat = models.FloatField()
+    lng = models.FloatField()
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
-        db_table = 'favourites'
-        verbose_name = 'Favourite'
-        verbose_name_plural = 'Favourites'
-        ordering = ['-created_at']
-    
+        db_table = "favourites"
+        verbose_name = "Favourite"
+        verbose_name_plural = "Favourites"
+        ordering = ["-created_at"]
+
     def __str__(self):
-        return f"{self.user.email} - {self.label or 'Unnamed route'}"
+        name = self.label or self.address
+        return f"{self.user.email} - {self.type} - {name}"

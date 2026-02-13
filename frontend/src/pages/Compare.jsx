@@ -12,7 +12,6 @@ import CompareResults from "./CompareResults";
 async function geocodeAddressIfAvailable(address) {
   const trimmed = (address || "").trim();
   if (!trimmed) return null;
-  
   if (!window.google?.maps?.Geocoder) return null;
 
   return new Promise((resolve) => {
@@ -45,35 +44,51 @@ function extractErrorMessage(err) {
   return "Failed to compare rides";
 }
 
+function getFirstName(user) {
+  const full = (user?.full_name || user?.name || "").trim();
+  if (full) return full.split(/\s+/)[0];
+  const email = (user?.email || "").trim();
+  if (email && email.includes("@")) return email.split("@")[0];
+  return "";
+}
+
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 function RoutePill({ text, onClose, onAddStop }) {
   return (
     <div
-      className="w-full rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-card px-3 py-2"
-      style={{ boxShadow: "0 14px 44px rgba(0,0,0,0.28)" }}
+      className="w-full rc-card px-3 py-2"
+      style={{ boxShadow: "0 18px 55px rgba(0,0,0,0.30)" }}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
           onClick={onClose}
           className="rc-icon-btn"
-          aria-label="Close results"
+          aria-label="Close sheet"
           title="Close"
         >
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5 text-foreground" />
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">{text}</div>
+          <div className="truncate text-sm font-extrabold text-foreground">{text}</div>
+          <div className="text-xs text-muted-foreground font-medium">Available rides</div>
         </div>
 
         <button
           type="button"
           onClick={onAddStop}
           className="rc-icon-btn"
-          aria-label="Add stop (coming soon)"
-          title="Add stop (coming soon)"
+          aria-label="Add stop"
+          title="Stops coming soon"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-5 w-5 text-foreground" />
         </button>
       </div>
     </div>
@@ -122,26 +137,22 @@ export default function Compare() {
     const address = loc?.address?.trim();
     if (!address) return null;
 
-    // If LocationInput already gave coords, use them.
     if (loc.lat != null && loc.lng != null) {
       return { address, lat: Number(loc.lat), lng: Number(loc.lng) };
     }
 
-    // Otherwise attempt geocode ONLY if maps exists (no duplicate loader here).
     const coords = await geocodeAddressIfAvailable(address);
     if (!coords) return null;
 
     return { address, lat: Number(coords.lat), lng: Number(coords.lng) };
   };
 
-  const handleCompare = async () => {
-    const pickupAddress = pickup?.address?.trim();
-    const dropoffAddress = dropoff?.address?.trim();
+  const pickupAddress = (pickup?.address || "").trim();
+  const dropoffAddress = (dropoff?.address || "").trim();
+  const isFormValid = pickupAddress.length > 0 && dropoffAddress.length > 0;
 
-    if (!pickupAddress || !dropoffAddress) {
-      toast.error("Please enter pickup and dropoff locations");
-      return;
-    }
+  const handleCompare = async () => {
+    if (!isFormValid) return;
 
     setLoading(true);
     try {
@@ -176,52 +187,48 @@ export default function Compare() {
     return `${left} → ${right}`;
   }, [pickupText, dropoffText]);
 
+  const name = getFirstName(user);
+  const greeting = `${timeGreeting()}${name ? `, ${name}!` : "!"}`;
+  const tagline = "Where would you like to go today?";
+
   return (
     <>
-      {/* Hero */}
+      {/* Greeting (centred) */}
       <div className="text-center mb-6 animate-fade-in-up">
-        <h1 className="text-[22px] md:text-3xl font-bold leading-tight mb-1">
-          Compare rides instantly
+        <h1 className="text-[22px] md:text-3xl font-extrabold leading-tight mb-1">
+          {greeting}
         </h1>
-        <p className="text-sm md:text-base text-muted-foreground">
-          Find the best price across all platforms
+        <p className="text-sm md:text-base text-muted-foreground font-medium">
+          {tagline}
         </p>
       </div>
 
       {/* Form */}
       <div className="rc-card p-5 space-y-4 animate-fade-in-up">
-        <div>
-          <label className="block text-xs font-semibold text-muted-foreground mb-2">
-            Pickup
-          </label>
-          <LocationInput
-            value={pickup}
-            onChange={setPickup}
-            placeholder="Enter pickup location"
-            icon="pickup"
-            showCurrentLocation
-            inputRef={pickupRef}
-            onLocationError={() => toast.error("Location access unavailable")}
-          />
-        </div>
+        <LocationInput
+          label="Pickup"
+          value={pickup}
+          onChange={setPickup}
+          placeholder="Enter pickup location"
+          icon="pickup"
+          showCurrentLocation
+          inputRef={pickupRef}
+          onLocationError={() => toast.error("Location access unavailable")}
+        />
 
-        <div>
-          <label className="block text-xs font-semibold text-muted-foreground mb-2">
-            Dropoff
-          </label>
-          <LocationInput
-            value={dropoff}
-            onChange={setDropoff}
-            placeholder="Where are you going?"
-            icon="dropoff"
-            onLocationError={() => toast.error("Location search unavailable")}
-          />
-        </div>
+        <LocationInput
+          label="Dropoff"
+          value={dropoff}
+          onChange={setDropoff}
+          placeholder="Where are you going?"
+          icon="dropoff"
+          onLocationError={() => toast.error("Location search unavailable")}
+        />
 
         <button
           onClick={handleCompare}
-          disabled={loading}
-          className="rc-btn-primary w-full"
+          disabled={!isFormValid || loading}
+          className={["rc-btn-primary", (!isFormValid || loading) ? "rc-btn-disabled" : ""].join(" ")}
           type="button"
         >
           {loading ? (
@@ -235,13 +242,13 @@ export default function Compare() {
         </button>
 
         {!user ? (
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground text-center font-medium">
             Tip: Sign in to save places and alerts.
           </p>
         ) : null}
       </div>
 
-      {/* Floating route pill ABOVE the sheet */}
+      {/* Floating route pill */}
       {sheetOpen ? (
         <div className="fixed left-0 right-0 z-[10001] px-4" style={{ top: 72 }}>
           <div className="mx-auto w-full max-w-lg">
@@ -259,16 +266,12 @@ export default function Compare() {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title="Available rides"
-        subtitle={`${pickupText} → ${dropoffText}`}
+        subtitle={null}
         snapPoints={[0.18, 0.66, 0.92]}
         initialSnap={1}
+        maxWidthClass="max-w-lg"
       >
-        <CompareResults
-          embedded
-          rides={sheetData.rides}
-          pickup={sheetData.pickup}
-          dropoff={sheetData.dropoff}
-        />
+        <CompareResults embedded rides={sheetData.rides} />
       </BottomSheet>
     </>
   );

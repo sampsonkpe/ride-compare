@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -128,30 +129,30 @@ export default function Auth() {
     setError(null);
   };
 
-  const inputClass =
-    "h-11 w-full rounded-xl bg-card border border-border px-4 text-foreground " +
+  const inputBase =
+    "w-full h-11 rounded-xl bg-card border border-border pl-11 pr-4 text-foreground " +
     "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+
+  const iconCls = "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground";
 
   return (
     <div className="w-full">
-      <div className="text-center mb-6">
-        <h1 className="text-[22px] font-bold leading-tight mb-1">{greeting}</h1>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold mb-2">{greeting}</h1>
+        <p className="text-muted-foreground">{subtitle}</p>
       </div>
 
-      <div className="rc-card p-5">
-        <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-card">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-2">
-                Full name
-              </label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">Full name</label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 maxLength={150}
-                className={inputClass}
+                className="w-full h-11 rounded-xl bg-card border border-border px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Your full name"
                 required
               />
@@ -160,57 +161,56 @@ export default function Auth() {
 
           {!isLogin && (
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-2">
-                Phone (optional)
-              </label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">Phone (optional)</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 maxLength={30}
-                className={inputClass}
+                className="w-full h-11 rounded-xl bg-card border border-border px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Your phone number"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              maxLength={255}
-              className={inputClass}
-              placeholder="Your email address"
-              required
-            />
+            <label className="block text-sm font-medium text-muted-foreground mb-2">Email</label>
+            <div className="relative">
+              <Mail className={iconCls} />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                maxLength={255}
+                className={inputBase}
+                placeholder="Your email address"
+                required
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-2">
-              Password
-            </label>
+            <label className="block text-sm font-medium text-muted-foreground mb-2">Password</label>
             <div className="relative">
+              <Lock className={iconCls} />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={6}
-                className={`${inputClass} pr-12`}
+                className={inputBase + " pr-12"}
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-9 px-2 rounded-lg
-                  text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg
+                  text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide" : "Show"}
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
@@ -221,7 +221,7 @@ export default function Auth() {
             </div>
           )}
 
-          <button type="submit" disabled={isSubmitting} className="rc-btn-primary w-full">
+          <button type="submit" disabled={isSubmitting} className="rc-btn-primary">
             {isSubmitting ? (
               <>
                 <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
@@ -235,20 +235,16 @@ export default function Auth() {
           </button>
         </form>
 
-        <div className="mt-5 text-center">
+        <div className="mt-6 text-center">
           <p className="text-muted-foreground text-sm">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-            <button
-              onClick={toggleMode}
-              className="text-primary font-semibold hover:underline"
-              type="button"
-            >
+            <button onClick={toggleMode} className="text-primary font-medium hover:underline" type="button">
               {isLogin ? "Sign up" : "Sign in"}
             </button>
           </p>
         </div>
 
-        <div className="mt-3 text-center">
+        <div className="mt-4 text-center">
           <button
             onClick={() => navigate("/compare")}
             className="text-muted-foreground text-sm hover:text-foreground transition-colors"

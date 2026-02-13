@@ -1,9 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
-@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {
-    /* Light theme */
     --background: 0 0% 98%;
     --foreground: 220 20% 15%;
 
@@ -13,24 +15,24 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
 
-    --primary: 210 50% 35%;
+    --primary: 215 50% 25%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 87%;
+    --secondary: 0 0% 96%;
     --secondary-foreground: 220 20% 15%;
 
     --muted: 0 0% 96%;
     --muted-foreground: 220 10% 50%;
 
     --accent: 215 40% 95%;
-    --accent-foreground: 210 50% 35%;
+    --accent-foreground: 215 50% 25%;
 
-    --destructive: 1 77% 55%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 90%;
     --input: 0 0% 100%;
-    --ring: 210 50% 35%;
+    --ring: 215 50% 25%;
 
     --radius: 0.75rem;
 
@@ -48,36 +50,31 @@
     --popover: 220 15% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 210 54% 48%;
+    --primary: 215 60% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 87%;
+    --secondary: 220 15% 18%;
     --secondary-foreground: 0 0% 90%;
 
     --muted: 220 15% 16%;
     --muted-foreground: 220 10% 55%;
 
     --accent: 215 40% 20%;
-    --accent-foreground: 210 54% 70%;
+    --accent-foreground: 215 60% 70%;
 
-    --destructive: 1 77% 55%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 15% 20%;
     --input: 220 15% 12%;
-    --ring: 210 54% 48%;
+    --ring: 215 60% 50%;
 
     --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.4);
-    --shadow-card-hover: 0 4px 20px -4px hsl(210 54% 48% / 0.15);
+    --shadow-card-hover: 0 4px 20px -4px hsl(215 60% 50% / 0.15);
   }
 
   * {
     border-color: hsl(var(--border));
-  }
-
-  html,
-  body {
-    height: 100%;
   }
 
   body {
@@ -90,99 +87,58 @@
   }
 }
 
-@layer utilities {
+@layer components {
   .rc-card {
-    background: hsl(var(--card));
-    color: hsl(var(--card-foreground));
-    border: 1px solid hsl(var(--border));
-    border-radius: 1rem; /* 2xl-ish */
-    box-shadow: var(--shadow-card);
-  }
-
-  .rc-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    min-height: 52px;
-    padding: 0 1.5rem;
-    border-radius: 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 700;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    transition: transform 160ms ease, opacity 160ms ease, background 160ms ease, box-shadow 160ms ease;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-
-  .rc-btn-primary:hover {
-    opacity: 0.92;
-  }
-
-  .rc-btn-primary:active {
-    transform: scale(0.985);
-  }
-
-  .rc-btn-primary:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.35);
-  }
-
-  .rc-btn-primary:disabled {
-    cursor: not-allowed;
-    background: hsl(var(--muted));
-    color: hsl(var(--muted-foreground));
-    opacity: 0.9;
-    transform: none;
+    @apply bg-card border border-border rounded-2xl shadow-card;
   }
 
   .rc-icon-btn {
-    height: 40px;
-    width: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.75rem;
-    transition: background 160ms ease, box-shadow 160ms ease;
+    @apply p-2 rounded-full hover:bg-muted transition-colors
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 
-  .rc-icon-btn:hover {
-    background: hsl(var(--muted));
+  .rc-btn-primary {
+    @apply w-full inline-flex items-center justify-center gap-2
+      min-h-[52px] px-6 rounded-xl text-sm font-semibold
+      bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 
-  .rc-icon-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.35);
+  .rc-btn-disabled {
+    @apply bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted active:scale-100;
   }
 
-  /* Dark-mode logo inversion for Uber + RideCompare */
+  /* Only invert logos in dark mode */
   .rc-logo-invert-dark {
-    filter: none;
-  }
-
-  .dark .rc-logo-invert-dark {
-    filter: invert(1) brightness(2);
+    @apply dark:invert dark:brightness-200;
   }
 }
 
 /* Animations */
-@keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes bounce-gentle {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
 }
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-/* ===== Google Places dropdown styling ===== */
+.animate-bounce-gentle { animation: bounce-gentle 1.5s ease-in-out infinite; }
+.animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
+.animate-fade-out { animation: fade-out 0.5s ease-out forwards; }
+.animate-scale-in { animation: scale-in 0.4s ease-out forwards; }
+
+/* Optional: Google Places dropdown baseline */
 .pac-container {
   background: hsl(var(--popover)) !important;
   border: 1px solid hsl(var(--border)) !important;
@@ -192,24 +148,16 @@
   margin-top: 8px !important;
   z-index: 99999 !important;
 }
-
 .pac-item {
   border-top: 1px solid hsl(var(--border)) !important;
   padding: 12px 14px !important;
   color: hsl(var(--foreground)) !important;
   font-size: 14px !important;
 }
-
 .pac-item:hover,
 .pac-item-selected {
   background: hsl(var(--accent)) !important;
 }
-
 .pac-item-query {
   color: hsl(var(--foreground)) !important;
-}
-
-/* Legacy fallback */
-.logo-dark-invert {
-  filter: invert(1) brightness(2);
 }

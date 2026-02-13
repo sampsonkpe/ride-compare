@@ -56,18 +56,34 @@ function typeOnlyLabel(ride) {
 
   const s = String(raw).trim();
   if (!s) return "Economy";
-  if (/uberx/i.test(s)) return "X";
+  if (/uberx/i.test(s)) return "UberX";
+  if (/uber\s*x/i.test(s)) return "UberX";
+  if (/^x$/i.test(s)) return "X";
   return s;
+}
+
+function rideDisplay(providerKey, ride) {
+  const company = providerDisplayName(providerKey);
+  const type = typeOnlyLabel(ride);
+
+  if (providerKey === "UBER") {
+    // UberX formatting
+    if (type === "X") return "UberX";
+    if (/uber/i.test(type)) return type;
+    return `Uber ${type}`.trim();
+  }
+
+  // Bolt Comfort, Yango Economy, etc.
+  if (/bolt/i.test(type) || /yango/i.test(type)) return type;
+  return `${company} ${type}`.trim();
 }
 
 export default function CompareResults({
   embedded = false,
   rides = [],
-  pickup = null,
-  dropoff = null,
   onClose,
 }) {
-  const [sortBy, setSortBy] = useState("price"); // default: price
+  const [sortBy, setSortBy] = useState("price");
 
   const sortedRides = useMemo(() => {
     const copy = [...(Array.isArray(rides) ? rides : [])];
@@ -93,11 +109,10 @@ export default function CompareResults({
     return copy;
   }, [rides, sortBy]);
 
+  const primaryBtn = "rc-btn-primary";
+
   const Wrapper = ({ children }) =>
     embedded ? <div className="space-y-4">{children}</div> : <div className="min-h-screen">{children}</div>;
-
-  const primaryBtn =
-    "rc-btn-primary w-full"; // from index.css utilities
 
   if (!Array.isArray(rides) || rides.length === 0) {
     return (
@@ -118,15 +133,12 @@ export default function CompareResults({
 
   return (
     <Wrapper>
-      {/* Top row: sort (route is handled by pill + sheet subtitle) */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground font-semibold">Results</div>
-
-        <div className="relative shrink-0">
+      <div className="flex items-center justify-end">
+        <div className="relative">
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="appearance-none bg-card border border-border rounded-xl px-3 py-2 pr-8 text-sm text-foreground
+            className="appearance-none bg-card border border-border rounded-xl px-3 py-2 pr-9 text-sm text-foreground
                        focus:ring-2 focus:ring-ring outline-none"
             aria-label="Sort results"
           >
@@ -142,69 +154,57 @@ export default function CompareResults({
         {sortedRides.map((ride, index) => {
           const providerKey = normalizeProvider(ride?.provider);
           const company = providerDisplayName(providerKey);
-
           const logo = PROVIDER_LOGO[providerKey];
-          const rideType = typeOnlyLabel(ride);
-
-          const priceText = formatMoneyGHS(ride?.price);
 
           const etaNum = toNumber(ride?.eta_minutes);
-          const etaText = etaNum == null ? "--" : `${etaNum}`;
+          const etaText = etaNum == null ? "—" : `${etaNum} min`;
+
+          const priceText = formatMoneyGHS(ride?.price);
+          const rideTypeText = rideDisplay(providerKey, ride);
 
           const deepLink = PROVIDER_DEEPLINK[providerKey] || "https://ridecompare.app";
-
-          const isUber = providerKey === "UBER";
 
           return (
             <div
               key={index}
-              className="rc-card rc-card-hover p-5"
-              style={{ animationDelay: `${index * 70}ms` }}
+              className="rc-card p-5"
+              style={{ animationDelay: `${index * 80}ms` }}
             >
-              {/* Top row: COMPANY left, ETA right */}
-              <div className="flex items-start justify-between gap-3">
+              {/* Top row: logo left, ETA right */}
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
                   {logo ? (
                     <img
                       src={logo}
                       alt={`${company} logo`}
                       className={[
-                        "h-6 w-auto object-contain select-none",
-                        isUber ? "rc-logo-invert-dark" : "",
+                        "h-6 w-auto object-contain",
+                        providerKey === "UBER" ? "rc-logo-invert-dark" : "",
                       ].join(" ")}
-                      draggable={false}
                     />
                   ) : (
                     <div className="text-sm font-semibold">{company}</div>
                   )}
                 </div>
 
-                <div className="inline-flex items-center gap-2 text-sm text-muted-foreground font-semibold">
+                <div className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  {etaText} min
+                  {etaText}
                 </div>
               </div>
 
-              {/* Bottom row: RIDE TYPE left, PRICE right */}
-              <div className="mt-4 flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[11px] text-muted-foreground font-semibold">Ride</div>
-                  <div className="text-sm font-semibold truncate">{rideType}</div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-[11px] text-muted-foreground font-semibold">Price</div>
-                  <div className="text-2xl font-bold leading-tight">{priceText}</div>
-                </div>
+              {/* Price (main focus) */}
+              <div className="mt-3 text-3xl font-extrabold tracking-tight text-foreground">
+                {priceText}
               </div>
 
-              {/* CTA across */}
-              <a
-                href={deepLink}
-                target="_blank"
-                rel="noreferrer"
-                className={primaryBtn + " mt-4"}
-              >
+              {/* Ride type (lighter) */}
+              <div className="mt-2 text-sm font-medium text-muted-foreground">
+                {rideTypeText}
+              </div>
+
+              {/* CTA full width */}
+              <a href={deepLink} target="_blank" rel="noreferrer" className={primaryBtn + " mt-4"}>
                 Continue in App
               </a>
             </div>

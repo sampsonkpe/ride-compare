@@ -14,9 +14,7 @@ export default function BottomSheet({
   snapPoints = [0.18, 0.66, 0.92],
   initialSnap = 1,
   zIndex = 9999,
-
-  floatingHeader = null,
-  floatingHeaderOffset = 10, // px gap between sheet top edge and floating header
+  maxWidthClass = "max-w-lg",
 }) {
   const dragRef = useRef({
     active: false,
@@ -86,7 +84,6 @@ export default function BottomSheet({
     dragRef.current.active = true;
     dragRef.current.startY = clientY;
     dragRef.current.startTranslate = translatePx;
-    dragRef.current.translate = translatePx;
   };
 
   const moveDrag = (clientY) => {
@@ -123,10 +120,6 @@ export default function BottomSheet({
     setTranslatePx(snapTranslatePx[best]);
   };
 
-  const sheetTopPx = useMemo(() => {
-    return vh - sheetHeightPx + translatePx;
-  }, [vh, sheetHeightPx, translatePx]);
-
   if (!open) return null;
 
   return createPortal(
@@ -145,98 +138,85 @@ export default function BottomSheet({
         }}
       />
 
-      {/* Floating header */}
-      {floatingHeader ? (
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: Math.max(12, sheetTopPx - 56 - floatingHeaderOffset),
-            pointerEvents: "none",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: 520,
-              margin: "0 auto",
-              padding: "0 16px",
-              pointerEvents: "auto",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {floatingHeader}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Sheet */}
+      {/* Centered container to match app width */}
       <div
-        role="dialog"
-        aria-modal="true"
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           bottom: 0,
-          height: sheetHeightPx,
-          transform: `translateY(${translatePx}px)`,
-          transition: isDragging ? "none" : "transform 220ms ease-out",
-          background: "hsl(var(--card))",
-          color: "hsl(var(--foreground))",
-          borderTopLeftRadius: 18,
-          borderTopRightRadius: 18,
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.35)",
-          overflow: "hidden",
-          borderTop: "1px solid hsl(var(--border))",
+          display: "flex",
+          justifyContent: "center",
+          paddingLeft: 16,
+          paddingRight: 16,
+          pointerEvents: "none",
         }}
-        onClick={(e) => e.stopPropagation()}
       >
-        {/* Handle/Header (drag area) */}
+        {/* Sheet */}
         <div
-          onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture?.(e.pointerId);
-            beginDrag(e.clientY);
-          }}
-          onPointerMove={(e) => moveDrag(e.clientY)}
-          onPointerUp={endDrag}
+          role="dialog"
+          aria-modal="true"
+          className={["w-full", maxWidthClass].join(" ")}
           style={{
-            padding: "10px 16px 10px",
-            userSelect: "none",
-            cursor: "grab",
-            borderBottom: "1px solid hsl(var(--border))",
+            pointerEvents: "auto",
+            height: sheetHeightPx,
+            transform: `translateY(${translatePx}px)`,
+            transition: isDragging ? "none" : "transform 220ms ease-out",
+            background: "hsl(var(--card))",
+            color: "hsl(var(--foreground))",
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            boxShadow: "0 -20px 60px rgba(0,0,0,0.35)",
+            overflow: "hidden",
+            borderTop: "1px solid hsl(var(--border))",
           }}
         >
+          {/* Handle/Header (drag area) */}
+          <div
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+              beginDrag(e.clientY);
+            }}
+            onPointerMove={(e) => moveDrag(e.clientY)}
+            onPointerUp={endDrag}
+            style={{
+              padding: "10px 16px 10px",
+              userSelect: "none",
+              cursor: "grab",
+              borderBottom: "1px solid hsl(var(--border))",
+            }}
+          >
+            <div
+              style={{
+                margin: "0 auto",
+                height: 6,
+                width: 54,
+                borderRadius: 999,
+                background: "hsl(var(--muted-foreground) / 0.35)",
+              }}
+            />
+
+            {title ? (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>{title}</div>
+                {subtitle ? (
+                  <div style={{ marginTop: 4, opacity: 0.75, fontSize: 12 }}>{subtitle}</div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Content */}
           <div
             style={{
-              margin: "0 auto",
-              height: 6,
-              width: 54,
-              borderRadius: 999,
-              background: "hsl(var(--muted-foreground) / 0.35)",
+              height: "calc(100% - 74px)",
+              overflowY: "auto",
+              padding: "12px 16px 18px",
             }}
-          />
-
-          {title || subtitle ? (
-            <div style={{ marginTop: 10 }}>
-              {title ? <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div> : null}
-              {subtitle ? (
-                <div style={{ marginTop: 4, opacity: 0.75, fontSize: 12 }}>{subtitle}</div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        {/* Content */}
-        <div
-          style={{
-            height: "calc(100% - 74px)",
-            overflowY: "auto",
-            padding: "12px 16px 18px",
-          }}
-        >
-          {children}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>,
