@@ -13,10 +13,98 @@ from .services.bolt_service import BoltService
 from .services.yango_service import YangoService
 
 
+def _safe_float(x, default=0.0):
+    try:
+        return float(x)
+    except Exception:
+        return default
+
+
+def _safe_int(x, default=0):
+    try:
+        return int(x)
+    except Exception:
+        return default
+
+
+def _aggregate_route_quotes(leg_quotes):
+    if not leg_quotes:
+        return None
+
+    first = leg_quotes[0]
+
+    total_price = 0.0
+    total_distance = 0.0
+    # Keep ETA as "time to pickup" (closest behaviour to what users expect)
+    eta_minutes = _safe_int(first.get("eta_minutes"), 0)
+
+    surges = []
+    legs_out = []
+
+    for idx, q in enumerate(leg_quotes):
+        total_price += _safe_float(q.get("price"), 0.0)
+        total_distance += _safe_float(q.get("distance_km"), 0.0)
+
+        sm = q.get("surge_multiplier", None)
+        if sm is not None:
+            surges.append(_safe_float(sm, 0.0))
+
+        legs_out.append(
+            {
+                "from_index": idx,
+                "to_index": idx + 1,
+                "price": _safe_float(q.get("price"), 0.0),
+                "distance_km": _safe_float(q.get("distance_km"), 0.0),
+                "eta_minutes": _safe_int(q.get("eta_minutes"), 0),
+                "surge_multiplier": q.get("surge_multiplier", None),
+            }
+        )
+
+    out = {
+        "provider": first.get("provider"),
+        "service_type": first.get("service_type"),
+        "price": round(total_price, 2),
+        "currency": first.get("currency", "GHS"),
+        "eta_minutes": eta_minutes,
+        "distance_km": round(total_distance, 2),
+        "surge_multiplier": (max(surges) if surges else None),
+        "legs": legs_out,
+    }
+
+    return out
+
+
+def _quote_route(service, stops):
+    """
+    Stops: list of dicts: [{"kind":..., "lat":..., "lng":..., ...}, ...]
+    Returns aggregated quote dict, or None if provider fails any leg.
+    """
+    leg_quotes = []
+
+    for i in range(len(stops) - 1):
+        a = stops[i]
+        b = stops[i + 1]
+
+        quote = service.get_price_estimate(
+            a["lat"], a["lng"],
+            b["lat"], b["lng"]
+        )
+        if not quote:
+            return None
+
+        leg_quotes.append(quote)
+
+    return _aggregate_route_quotes(leg_quotes)
+
+
 class RideCompareView(APIView):
     """
     Public endpoint: compares rides across providers.
-    If the request user is authenticated, we save the search to history.
+    If the request user is authenticated, save the search to history.
+
+    Supports:
+    - Legacy payload: {pickup: {...}, dropoff: {...}}
+    - New payload: {stops: [{kind,address,lat,lng}, ...]}
     """
 
     permission_classes = (permissions.AllowAny,)
@@ -25,8 +113,10 @@ class RideCompareView(APIView):
         serializer = RideCompareRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        pickup = serializer.validated_data["pickup"]
-        dropoff = serializer.validated_data["dropoff"]
+        stops = serializer.validated_data["stops"]
+
+        pickup = stops[0]
+        dropoff = stops[-1]
 
         uber = UberService()
         bolt = BoltService()
@@ -35,30 +125,21 @@ class RideCompareView(APIView):
         rides = []
 
         try:
-            uber_price = uber.get_price_estimate(
-                pickup["lat"], pickup["lng"],
-                dropoff["lat"], dropoff["lng"]
-            )
+            uber_price = _quote_route(uber, stops)
             if uber_price:
                 rides.append(uber_price)
         except Exception as e:
             print(f"Uber API error: {e}")
 
         try:
-            bolt_price = bolt.get_price_estimate(
-                pickup["lat"], pickup["lng"],
-                dropoff["lat"], dropoff["lng"]
-            )
+            bolt_price = _quote_route(bolt, stops)
             if bolt_price:
                 rides.append(bolt_price)
         except Exception as e:
             print(f"Bolt API error: {e}")
 
         try:
-            yango_price = yango.get_price_estimate(
-                pickup["lat"], pickup["lng"],
-                dropoff["lat"], dropoff["lng"]
-            )
+            yango_price = _quote_route(yango, stops)
             if yango_price:
                 rides.append(yango_price)
         except Exception as e:
@@ -99,6 +180,7 @@ class RideCompareView(APIView):
                 dropoff_address=dropoff["address"],
                 dropoff_lat=dropoff["lat"],
                 dropoff_lng=dropoff["lng"],
+                stops=stops,
                 results=rides,
             )
 

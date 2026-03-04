@@ -113,7 +113,6 @@ export default function Compare() {
 
   const stopCount = stopRows.length;
   const canAddStop = stopCount < 3;
-  const hasStops = stopCount > 0;
 
   useEffect(() => {
     const incomingPickup = location.state?.pickup;
@@ -235,7 +234,6 @@ export default function Compare() {
   }, []);
 
   const allFilled = useMemo(() => stops.every((s) => isFilledPlace(s.value)), [stops]);
-
   const canCompare = allFilled && !loading;
 
   const handleCompare = async () => {
@@ -244,35 +242,37 @@ export default function Compare() {
       return;
     }
 
-    if (hasStops) {
-      toast("Multi-stop pricing will be enabled once the backend supports it.");
-      return;
-    }
-
-    const pickup = pickupStop?.value;
-    const dropoff = dropoffStop?.value;
-
-    const pickupAddress = pickup?.address?.trim();
-    const dropoffAddress = dropoff?.address?.trim();
-
-    if (!pickupAddress || !dropoffAddress) {
-      toast.error("Please enter pickup and dropoff locations");
+    if (!pickupStop || !dropoffStop) {
+      toast.error("Pickup and dropoff are required");
       return;
     }
 
     setLoading(true);
     try {
-      const [pickupFinal, dropoffFinal] = await Promise.all([
-        ensureCoords({ ...pickup, address: pickupAddress }),
-        ensureCoords({ ...dropoff, address: dropoffAddress }),
-      ]);
+      const stopsFinal = await Promise.all(
+        stops.map(async (s) => {
+          const address = s?.value?.address?.trim() || "";
+          const resolved = await ensureCoords({ ...s.value, address });
+          if (!resolved) return null;
 
-      if (!pickupFinal || !dropoffFinal) {
+          return {
+            kind: s.kind,
+            address: resolved.address,
+            lat: resolved.lat,
+            lng: resolved.lng,
+          };
+        })
+      );
+
+      if (stopsFinal.some((s) => !s)) {
         toast.error("Please select a suggested place so we can get coordinates.");
         return;
       }
 
-      const data = await ridesService.compareRides(pickupFinal, dropoffFinal);
+      const pickupFinal = stopsFinal[0];
+      const dropoffFinal = stopsFinal[stopsFinal.length - 1];
+
+      const data = await ridesService.compareRoute(stopsFinal);
       const ridesArr = Array.isArray(data?.rides) ? data.rides : [];
 
       setSheetData({ rides: ridesArr, pickup: pickupFinal, dropoff: dropoffFinal });
@@ -402,7 +402,7 @@ export default function Compare() {
           />
         ) : null}
 
-        {/* Swap + Add Stop row (right under Dropoff as per spec) */}
+        {/* Swap + Add Stop row */}
         <div className="flex items-center justify-between gap-3 pt-1">
           <button
             type="button"

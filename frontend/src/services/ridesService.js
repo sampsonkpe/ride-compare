@@ -12,6 +12,7 @@ function buildPayloadVariants(pickup, dropoff) {
     lat: dropoff?.lat != null ? Number(dropoff.lat) : null,
     lng: dropoff?.lng != null ? Number(dropoff.lng) : null,
   };
+
   // Variant 1: simple nested structure
   const v1 = { pickup: p, dropoff: d };
 
@@ -45,7 +46,6 @@ async function postCompareWithFallbacks(pickup, dropoff) {
     } catch (err) {
       lastErr = err;
 
-      // If it’s not a 400/404/415 type “shape” issue, don’t bother retrying
       const status = err?.response?.status;
       if (status && ![400, 404, 415].includes(status)) break;
     }
@@ -54,9 +54,28 @@ async function postCompareWithFallbacks(pickup, dropoff) {
   throw lastErr;
 }
 
+function normaliseStops(stops = []) {
+  const arr = Array.isArray(stops) ? stops : [];
+  return arr.map((s) => ({
+    kind: String(s?.kind || "").toUpperCase(),
+    address: (s?.address || "").trim(),
+    lat: s?.lat != null ? Number(s.lat) : null,
+    lng: s?.lng != null ? Number(s.lng) : null,
+  }));
+}
+
 const ridesService = {
+  // Legacy compare (pickup/dropoff)
   compareRides: async (pickup, dropoff) => {
     return postCompareWithFallbacks(pickup, dropoff);
+  },
+
+  // New multi-stop compare (stops[])
+  compareRoute: async (stops) => {
+    const payloadStops = normaliseStops(stops);
+
+    const response = await api.post("/rides/compare/", { stops: payloadStops });
+    return response.data;
   },
 
   getHistory: async () => {

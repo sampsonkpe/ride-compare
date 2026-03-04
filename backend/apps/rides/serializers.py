@@ -9,10 +9,61 @@ class LocationSerializer(serializers.Serializer):
     lng = serializers.FloatField()
 
 
+class StopSerializer(serializers.Serializer):
+    """Single stop in a multi-stop route."""
+    kind = serializers.ChoiceField(choices=["PICKUP", "STOP", "DROPOFF"])
+    address = serializers.CharField(max_length=500)
+    lat = serializers.FloatField()
+    lng = serializers.FloatField()
+
+
 class RideCompareRequestSerializer(serializers.Serializer):
-    """Serializer for ride comparison request"""
-    pickup = LocationSerializer()
-    dropoff = LocationSerializer()
+    """
+    Backwards compatible:
+    - Old format: pickup + dropoff
+    - New format: stops[]
+    """
+    pickup = LocationSerializer(required=False)
+    dropoff = LocationSerializer(required=False)
+    stops = StopSerializer(many=True, required=False)
+
+    def validate(self, attrs):
+        stops = attrs.get("stops")
+        pickup = attrs.get("pickup")
+        dropoff = attrs.get("dropoff")
+
+        if stops is None:
+            # Old format
+            if not pickup or not dropoff:
+                raise serializers.ValidationError("Provide either stops[] or pickup & dropoff.")
+            # Normalise to stops[] internally for the view
+            attrs["stops"] = [
+                {"kind": "PICKUP", **pickup},
+                {"kind": "DROPOFF", **dropoff},
+            ]
+            return attrs
+
+        # New format
+        if not isinstance(stops, list) or len(stops) < 2:
+            raise serializers.ValidationError("stops must include at least PICKUP and DROPOFF.")
+
+        if len(stops) > 5:
+            raise serializers.ValidationError("Maximum of 5 points allowed (pickup + 3 stops + dropoff).")
+
+        first = stops[0]
+        last = stops[-1]
+
+        if first.get("kind") != "PICKUP":
+            raise serializers.ValidationError("First stop must be kind=PICKUP.")
+        if last.get("kind") != "DROPOFF":
+            raise serializers.ValidationError("Last stop must be kind=DROPOFF.")
+
+        middle = stops[1:-1]
+        for i, s in enumerate(middle, start=1):
+            if s.get("kind") != "STOP":
+                raise serializers.ValidationError(f"Stop at index {i} must be kind=STOP.")
+
+        return attrs
 
 
 class RideOptionSerializer(serializers.Serializer):
@@ -24,6 +75,7 @@ class RideOptionSerializer(serializers.Serializer):
     eta_minutes = serializers.IntegerField()
     distance_km = serializers.FloatField()
     surge_multiplier = serializers.FloatField(required=False, allow_null=True)
+    legs = serializers.ListField(child=serializers.DictField(), required=False)
 
 
 class RideCompareResponseSerializer(serializers.Serializer):
@@ -34,10 +86,19 @@ class RideCompareResponseSerializer(serializers.Serializer):
 
 class SearchHistorySerializer(serializers.ModelSerializer):
     """Serializer for search history"""
-    
+
     class Meta:
         model = SearchHistory
-        fields = ('id', 'pickup_address', 'pickup_lat', 'pickup_lng', 
-                  'dropoff_address', 'dropoff_lat', 'dropoff_lng', 
-                  'results', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = (
+            "id",
+            "pickup_address",
+            "pickup_lat",
+            "pickup_lng",
+            "dropoff_address",
+            "dropoff_lat",
+            "dropoff_lng",
+            "stops",
+            "results",
+            "created_at",
+        )
+        read_only_fields = ("id", "created_at")
