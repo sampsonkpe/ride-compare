@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { CircleDot, MapPin, Crosshair, X } from "lucide-react";
 
 function loadGoogleMapsScript() {
@@ -76,9 +77,12 @@ export default function LocationInput({
   showCurrentLocation = false,
   onLocationError,
   inputRef: externalInputRef,
+  onFocus,
 }) {
-  const internalRef = useRef(null);
-  const inputRef = externalInputRef || internalRef;
+  const internalInputRef = useRef(null);
+  const inputRef = externalInputRef || internalInputRef;
+
+  const wrapperRef = useRef(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -93,6 +97,8 @@ export default function LocationInput({
   const autocompleteServiceRef = useRef(null);
   const placesServiceRef = useRef(null);
   const geocoderRef = useRef(null);
+
+  const [dropdownRect, setDropdownRect] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -149,8 +155,46 @@ export default function LocationInput({
 
   const pickIcon = useMemo(() => {
     if (icon === "pickup") return <CircleDot className="w-5 h-5 text-primary" />;
-    return <MapPin className="w-5 h-5 text-destructive" />;
+    if (icon === "dropoff") return <MapPin className="w-5 h-5 text-destructive" />;
+    return <MapPin className="w-5 h-5 text-muted-foreground" />; // stop / default
   }, [icon]);
+
+  const updateDropdownPosition = useCallback(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    // Anchor dropdown to the input container box
+    const rect = el.getBoundingClientRect();
+    // Slight gap below input container
+    const top = rect.bottom + 8;
+
+    setDropdownRect({
+      left: Math.round(rect.left),
+      top: Math.round(top),
+      width: Math.round(rect.width),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!showSuggestions || predictions.length === 0) {
+      setDropdownRect(null);
+      return;
+    }
+
+    updateDropdownPosition();
+
+    // Capture scroll events from any scrollable ancestor
+    const onScroll = () => updateDropdownPosition();
+    const onResize = () => updateDropdownPosition();
+
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [showSuggestions, predictions.length, updateDropdownPosition]);
 
   const commitSelection = (prediction) => {
     if (!prediction?.place_id) return;
@@ -179,14 +223,18 @@ export default function LocationInput({
           const r0 = results?.[0];
           if (geoStatus !== "OK" || !r0) {
             const firstChunk = (prediction.description.split(",")[0] || "").trim();
-            const safe = looksLikePlusCode(firstChunk) ? "Unnamed Road, Accra" : prediction.description;
+            const safe = looksLikePlusCode(firstChunk)
+              ? "Unnamed Road, Accra"
+              : prediction.description;
             onChange({ address: safe, lat, lng });
             return;
           }
 
           const normalized = getShortAddress(r0);
           const normalizedFirst = (normalized.split(",")[0] || "").trim();
-          const finalLabel = looksLikePlusCode(normalizedFirst) ? `Unnamed Road, ${getArea(r0)}` : normalized;
+          const finalLabel = looksLikePlusCode(normalizedFirst)
+            ? `Unnamed Road, ${getArea(r0)}`
+            : normalized;
           onChange({ address: finalLabel, lat, lng });
         });
       }
@@ -236,19 +284,22 @@ export default function LocationInput({
 
         onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
 
-        geocoderRef.current?.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-          const r0 = results?.[0];
+        geocoderRef.current?.geocode(
+          { location: { lat: latitude, lng: longitude } },
+          (results, status) => {
+            const r0 = results?.[0];
 
-          if (status !== "OK" || !r0) {
-            onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
+            if (status !== "OK" || !r0) {
+              onChange({ address: "Unnamed Road, Accra", lat: latitude, lng: longitude });
+              setIsLocating(false);
+              return;
+            }
+
+            const shortAddress = getShortAddress(r0);
+            onChange({ address: shortAddress, lat: latitude, lng: longitude });
             setIsLocating(false);
-            return;
           }
-
-          const shortAddress = getShortAddress(r0);
-          onChange({ address: shortAddress, lat: latitude, lng: longitude });
-          setIsLocating(false);
-        });
+        );
       },
       (err) => {
         console.error(err);
@@ -259,102 +310,123 @@ export default function LocationInput({
     );
   };
 
-  return (
-    <div className="relative">
-      {(label || showCurrentLocation) && (
-        <div className="flex items-center justify-between gap-3 mb-2">
-          {label ? (
-            <label className="block text-xs font-medium text-muted-foreground">{label}</label>
-          ) : (
-            <span />
-          )}
+  const dropdown =
+    showSuggestions && predictions.length > 0 && dropdownRect
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: dropdownRect.left,
+              top: dropdownRect.top,
+              width: dropdownRect.width,
+              zIndex: 999999,
+            }}
+            className="bg-card/75 backdrop-blur-xl border border-border/70 rounded-xl overflow-hidden shadow-card-hover"
+          >
+            {predictions.slice(0, 5).map((p, idx) => (
+              <button
+                key={p.place_id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => commitSelection(p)}
+                className={[
+                  "w-full text-left px-4 py-3 text-sm transition",
+                  selectedIndex === idx ? "bg-muted/70" : "hover:bg-muted/60",
+                ].join(" ")}
+              >
+                <div className="text-foreground truncate">
+                  {p.structured_formatting?.main_text || p.description}
+                </div>
+                <div className="text-muted-foreground text-xs truncate">
+                  {p.structured_formatting?.secondary_text || ""}
+                </div>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )
+      : null;
 
-          {showCurrentLocation ? (
+  return (
+    <>
+      <div className="relative">
+        {(label || showCurrentLocation) && (
+          <div className="flex items-center justify-between gap-3 mb-2">
+            {label ? (
+              <label className="block text-xs font-medium text-muted-foreground">{label}</label>
+            ) : (
+              <span />
+            )}
+
+            {showCurrentLocation ? (
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={isLocating}
+                className="inline-flex items-center gap-2 text-xs font-medium text-primary hover:opacity-90 transition disabled:opacity-50"
+              >
+                <Crosshair className="w-4 h-4" />
+                {isLocating ? "Locating..." : "Use current location"}
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        <div
+          ref={wrapperRef}
+          className={[
+            "relative flex items-center rounded-xl border-2 transition",
+            "bg-card/70 backdrop-blur-xl",
+            isFocused
+              ? "border-ring shadow-card-hover"
+              : "border-border/70 hover:border-muted-foreground/30",
+          ].join(" ")}
+        >
+          <div className="pl-4 pr-2">{pickIcon}</div>
+
+          <input
+            ref={inputRef}
+            value={value?.address || ""}
+            onChange={(e) => {
+              onChange({ address: e.target.value, lat: null, lng: null });
+              setShowSuggestions(true);
+              setSelectedIndex(-1);
+            }}
+            onFocus={() => {
+              setIsFocused(true);
+              setShowSuggestions(true);
+              onFocus?.();
+              // ensure correct position immediately
+              requestAnimationFrame(() => updateDropdownPosition());
+            }}
+            onBlur={() => {
+              setIsFocused(false);
+              setTimeout(() => {
+                setShowSuggestions(false);
+                setSelectedIndex(-1);
+              }, 180);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="flex-1 h-12 px-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/60 focus:outline-none"
+            type="text"
+          />
+
+          {!!value?.address && (
             <button
               type="button"
-              onClick={useCurrentLocation}
-              disabled={isLocating}
-              className="inline-flex items-center gap-2 text-xs font-medium text-primary hover:opacity-90 transition disabled:opacity-50"
+              onClick={clearValue}
+              className="h-11 px-3 inline-flex items-center text-muted-foreground hover:text-foreground transition
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Clear"
             >
-              <Crosshair className="w-4 h-4" />
-              {isLocating ? "Locating..." : "Use current location"}
+              <X className="w-4 h-4" />
             </button>
-          ) : null}
+          )}
         </div>
-      )}
-
-      <div
-        className={[
-          "relative flex items-center rounded-xl border-2 transition",
-          "bg-card/70 backdrop-blur-xl",
-          isFocused
-            ? "border-ring shadow-card-hover"
-            : "border-border/70 hover:border-muted-foreground/30",
-        ].join(" ")}
-      >
-        <div className="pl-4 pr-2">{pickIcon}</div>
-
-        <input
-          ref={inputRef}
-          value={value?.address || ""}
-          onChange={(e) => {
-            onChange({ address: e.target.value, lat: null, lng: null });
-            setShowSuggestions(true);
-            setSelectedIndex(-1);
-          }}
-          onFocus={() => {
-            setIsFocused(true);
-            setShowSuggestions(true);
-          }}
-          onBlur={() => {
-            setIsFocused(false);
-            setTimeout(() => {
-              setShowSuggestions(false);
-              setSelectedIndex(-1);
-            }, 180);
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="flex-1 h-12 px-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/60 focus:outline-none"
-          type="text"
-        />
-
-        {!!value?.address && (
-          <button
-            type="button"
-            onClick={clearValue}
-            className="h-11 px-3 inline-flex items-center text-muted-foreground hover:text-foreground transition
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Clear"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
-      {showSuggestions && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-card/75 backdrop-blur-xl border border-border/70 rounded-xl overflow-hidden shadow-card-hover">
-          {predictions.slice(0, 5).map((p, idx) => (
-            <button
-              key={p.place_id}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => commitSelection(p)}
-              className={[
-                "w-full text-left px-4 py-3 text-sm transition",
-                selectedIndex === idx ? "bg-muted/70" : "hover:bg-muted/60",
-              ].join(" ")}
-            >
-              <div className="text-foreground truncate">
-                {p.structured_formatting?.main_text || p.description}
-              </div>
-              <div className="text-muted-foreground text-xs truncate">
-                {p.structured_formatting?.secondary_text || ""}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {dropdown}
+    </>
   );
 }
