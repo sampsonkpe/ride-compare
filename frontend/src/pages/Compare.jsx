@@ -1,8 +1,10 @@
 import { useState, useContext, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
+import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
+import favouritesService from "../services/favouritesService";
+
 import toast from "react-hot-toast";
 import LocationInput from "../components/rides/LocationInput";
 
@@ -102,6 +104,10 @@ export default function Compare() {
     dropoff: null,
   });
 
+  const [favourites, setFavourites] = useState([]);
+  const [selectedFavourite, setSelectedFavourite] = useState(null);
+  const [favSheetOpen, setFavSheetOpen] = useState(false);
+
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -154,6 +160,21 @@ export default function Compare() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const loadFavourites = async () => {
+      try {
+        const data = await favouritesService.getFavourites();
+        setFavourites(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadFavourites();
+  }, [user]);
+
   const ensureCoords = async (loc) => {
     const address = loc?.address?.trim();
     if (!address) return null;
@@ -171,6 +192,47 @@ export default function Compare() {
   const setStopValue = useCallback((stopId, nextValue) => {
     setStops((prev) => prev.map((s) => (s.id === stopId ? { ...s, value: nextValue } : s)));
   }, []);
+
+  const applyFavouriteTo = useCallback((type) => {
+    if (!selectedFavourite) return;
+
+    const value = {
+      address: selectedFavourite.address,
+      lat: selectedFavourite.lat,
+      lng: selectedFavourite.lng,
+    };
+
+    setStops((prev) => {
+      const next = [...prev];
+
+      if (type === "PICKUP") {
+        const idx = next.findIndex((s) => s.kind === "PICKUP");
+        if (idx >= 0) next[idx] = { ...next[idx], value };
+      }
+
+      if (type === "DROPOFF") {
+        const idx = next.findIndex((s) => s.kind === "DROPOFF");
+        if (idx >= 0) next[idx] = { ...next[idx], value };
+      }
+
+      if (type === "STOP") {
+        const dropIdx = next.findIndex((s) => s.kind === "DROPOFF");
+        if (dropIdx >= 0) {
+          const newStop = {
+            id: makeId(),
+            kind: "STOP",
+            value,
+          };
+          next.splice(dropIdx, 0, newStop);
+        }
+      }
+
+      return next;
+    });
+
+    setFavSheetOpen(false);
+    setSelectedFavourite(null);
+  }, [selectedFavourite]);
 
   const addStop = useCallback(() => {
     setStops((prev) => {
@@ -430,6 +492,90 @@ export default function Compare() {
           </button>
         </div>
 
+        {/* Saved Places */}
+        {user && favourites.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {favourites.map((fav) => {
+              const type = (fav.type || "").toUpperCase();
+
+              let Icon = MapPin;
+              let iconColor = "text-purple-400";
+
+              if (type === "HOME") {
+                Icon = Home;
+                iconColor = "text-blue-400";
+              }
+
+              if (type === "WORK") {
+                Icon = Briefcase;
+                iconColor = "text-emerald-400";
+              }
+
+              return (
+                <button
+                  key={fav.id}
+                  onClick={() => {
+                    setSelectedFavourite(fav);
+                    setFavSheetOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 text-xs hover:bg-muted transition"
+                >
+                  <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+                  {fav.label || fav.address}
+                </button>
+              );
+            }
+            )}
+          </div>
+        )}
+        {/* Favourite Popup */}
+{favSheetOpen && selectedFavourite && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center">
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => setFavSheetOpen(false)}
+    />
+
+    {/* Popup */}
+    <div className="relative z-10 w-[90%] max-w-sm rounded-2xl bg-card/95 border border-border/60 shadow-xl p-4 animate-scale-in">
+      <div className="mb-3">
+        <p className="text-sm font-semibold">
+          {selectedFavourite.label}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {selectedFavourite.address}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <button
+          onClick={() => applyFavouriteTo("PICKUP")}
+          className="w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/60 hover:bg-muted transition text-sm"
+        >
+          <MapPin className="w-4 h-4 text-primary" />
+          Set as Pickup
+        </button>
+
+        <button
+          onClick={() => applyFavouriteTo("DROPOFF")}
+          className="w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/60 hover:bg-muted transition text-sm"
+        >
+          <MapPin className="w-4 h-4 text-red-500" />
+          Set as Dropoff
+        </button>
+
+        <button
+          onClick={() => applyFavouriteTo("STOP")}
+          className="w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/60 hover:bg-muted transition text-sm"
+        >
+          <Plus className="w-4 h-4" />
+          Add as Stop
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         {/* Compare */}
         <button
           onClick={handleCompare}
