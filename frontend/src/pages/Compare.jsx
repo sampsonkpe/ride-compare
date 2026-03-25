@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin } from "lucide-react";
+import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin, CircleDot } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
 import favouritesService from "../services/favouritesService";
@@ -10,6 +10,7 @@ import LocationInput from "../components/rides/LocationInput";
 
 import BottomSheet from "../components/overlays/BottomSheet";
 import CompareResults from "./CompareResults";
+import { createPortal } from "react-dom";
 
 function loadGoogleMapsScript() {
   const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -495,7 +496,14 @@ export default function Compare() {
         {/* Saved Places */}
         {user && favourites.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2">
-            {favourites.map((fav) => {
+            {[...favourites]
+              .sort((a, b) => {
+                const order = { HOME: 0, WORK: 1, OTHER: 2 };
+                const ta = (a.type || "").toUpperCase();
+                const tb = (b.type || "").toUpperCase();
+                return (order[ta] ?? 3) - (order[tb] ?? 3);
+              })
+              .map((fav) => {
               const type = (fav.type || "").toUpperCase();
 
               let Icon = MapPin;
@@ -518,7 +526,7 @@ export default function Compare() {
                     setSelectedFavourite(fav);
                     setFavSheetOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 text-xs hover:bg-muted transition"
+                  className="flex items-center gap-2 px-3 h-10 rounded-xl border border-border/80 bg-card/70 text-sm font-medium hover:bg-muted/80 transition"
                 >
                   <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
                   {fav.label || fav.address}
@@ -528,54 +536,75 @@ export default function Compare() {
             )}
           </div>
         )}
-        {/* Favourite Popup */}
-{favSheetOpen && selectedFavourite && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center">
-    {/* Backdrop */}
-    <div
-      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-      onClick={() => setFavSheetOpen(false)}
-    />
 
-    {/* Popup */}
-    <div className="relative z-10 w-[90%] max-w-sm rounded-2xl bg-card/95 border border-border/60 shadow-xl p-4 animate-scale-in">
-      <div className="mb-3">
-        <p className="text-sm font-semibold">
-          {selectedFavourite.label}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {selectedFavourite.address}
-        </p>
-      </div>
+      {favSheetOpen && selectedFavourite &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+            
+            {/* FULLSCREEN backdrop */}
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setFavSheetOpen(false)}
+            />
 
-      <div className="space-y-2">
-        <button
-          onClick={() => applyFavouriteTo("PICKUP")}
-          className="w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/60 hover:bg-muted transition text-sm"
-        >
-          <MapPin className="w-4 h-4 text-primary" />
-          Set as Pickup
-        </button>
+            {/* Modal */}
+            <div
+              className="relative z-10 w-[90%] max-w-sm rounded-2xl bg-card/95 border border-border/60 shadow-xl p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-3">
+                <p className="text-sm font-semibold">
+                  {selectedFavourite.label}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedFavourite.address}
+                </p>
+              </div>
 
-        <button
-          onClick={() => applyFavouriteTo("DROPOFF")}
-          className="w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/60 hover:bg-muted transition text-sm"
-        >
-          <MapPin className="w-4 h-4 text-red-500" />
-          Set as Dropoff
-        </button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => applyFavouriteTo("PICKUP")}
+                  className="group w-full flex items-center gap-3 px-3 py-3 rounded-xl 
+                  bg-muted/30 hover:bg-primary/15 active:bg-primary/25
+                  border border-transparent hover:border-primary/40
+                  transition-all duration-150 active:scale-[0.98] text-sm"
+                >
+                  <CircleDot className="w-4 h-4 text-primary group-hover:scale-110 transition" />
+                  <span className="group-hover:text-primary font-medium">
+                    Set as Pickup
+                  </span>
+                </button>
 
-        <button
-          onClick={() => applyFavouriteTo("STOP")}
-          className="w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/60 hover:bg-muted transition text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Add as Stop
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+                <button
+                  onClick={() => applyFavouriteTo("DROPOFF")}
+                  className="group w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/30 hover:bg-primary/15 active:bg-primary/25
+                  border border-transparent hover:border-primary/40
+                  transition-all duration-150 active:scale-[0.98] text-sm"
+                >
+                  <MapPin className="w-4 h-4 text-destructive group-hover:scale-110 transition" />
+                  <span className="group-hover:text-destructive font-medium">
+                    Set as Dropoff
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => applyFavouriteTo("STOP")}
+                  className="group w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/30 hover:bg-primary/15 active:bg-primary/25
+                  border border-transparent hover:border-primary/40
+                  transition-all duration-150 active:scale-[0.98] text-sm"
+                >
+                  <Plus className="w-4 h-4 group-hover:scale-110 transition" />
+                  <span className="group-hover:text-primary font-medium">
+                    Add as Stop
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      }
+
         {/* Compare */}
         <button
           onClick={handleCompare}

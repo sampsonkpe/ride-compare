@@ -218,7 +218,7 @@ export default function Profile() {
     }
   };
 
-  const card = "border border-border/70 rounded-2xl shadow-card bg-card/80 backdrop-blur-xl";
+  const card = "border border-border/70 rounded-xl bg-card/70 backdrop-blur-xl";
 
   const primaryBtn =
     "inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl font-semibold " +
@@ -273,12 +273,8 @@ export default function Profile() {
                 <div key={fav.id} className={`${card} p-4`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <Icon
-                        className={[
-                          "h-5 w-5 shrink-0 mt-0.5",
-                          t === "HOME" ? "text-primary" : t === "WORK" ? "text-emerald-500" : "text-violet-400",
-                        ].join(" ")}
-                      />
+                    
+                    
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{title}</p>
                         <p className="text-sm text-muted-foreground truncate">{addressText}</p>
