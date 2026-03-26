@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin, CircleDot, Clock } from "lucide-react";
+import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin, CircleDot, Clock, X } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
 import favouritesService from "../services/favouritesService";
@@ -11,6 +11,35 @@ import LocationInput from "../components/rides/LocationInput";
 import BottomSheet from "../components/overlays/BottomSheet";
 import CompareResults from "./CompareResults";
 import { createPortal } from "react-dom";
+
+/* ✅ ADDED */
+function formatScheduledLabel(dateStr) {
+  if (!dateStr) return "";
+
+  const date = new Date(dateStr);
+  const now = new Date();
+
+  const isToday = date.toDateString() === now.toDateString();
+
+  const tomorrow = new Date();
+  tomorrow.setDate(now.getDate() + 1);
+
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+  const time = date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (isToday) return `Today, ${time}`;
+  if (isTomorrow) return `Tomorrow, ${time}`;
+
+  return date.toLocaleString([], {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 function loadGoogleMapsScript() {
   const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -510,20 +539,25 @@ export default function Compare() {
               Schedule for later
             </button>
           ) : (
-            <div className="w-full flex items-center justify-between px-3 h-11 rounded-xl border border-border/70 bg-card/70 text-sm">
-              <span>
-                {new Date(scheduledAt).toLocaleString([], {
-                  weekday: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+            <div className="w-full flex items-center justify-between px-3 h-11 rounded-xl 
+              border border-primary/20 bg-primary/10 text-sm backdrop-blur-sm">
 
+              {/* LEFT */}
+              <div className="flex items-center gap-2 min-w-0">
+                <Clock className="w-4 h-4 text-primary shrink-0" />
+
+                <span className="font-medium text-primary truncate">
+                  {formatScheduledLabel(scheduledAt)}
+                </span>
+              </div>
+
+              {/* RIGHT (clear) */}
               <button
                 onClick={() => setScheduledAt(null)}
-                className="text-muted-foreground hover:text-foreground"
+                className="ml-2 p-1 rounded-full hover:bg-primary/20 transition"
+                aria-label="Clear schedule"
               >
-                ✕
+                <X className="w-4 h-4 text-primary" />
               </button>
             </div>
           )}
