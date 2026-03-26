@@ -273,8 +273,19 @@ export default function Profile() {
                 <div key={fav.id} className={`${card} p-4`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                    
-                    
+                      
+                      {/* ✅ ONLY ADDITION */}
+                      <Icon
+                        className={[
+                          "h-5 w-5 shrink-0 mt-0.5",
+                          t === "HOME"
+                            ? "text-blue-400"
+                            : t === "WORK"
+                            ? "text-emerald-400"
+                            : "text-purple-400",
+                        ].join(" ")}
+                      />
+
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{title}</p>
                         <p className="text-sm text-muted-foreground truncate">{addressText}</p>
@@ -349,6 +360,21 @@ export default function Profile() {
                     { key: "OTHER", label: "Other", Icon: MapPin },
                   ].map((item) => {
                     const active = type === item.key;
+
+                    const color =
+                      item.key === "HOME"
+                        ? "text-blue-400"
+                        : item.key === "WORK"
+                        ? "text-emerald-400"
+                        : "text-purple-400";
+
+                    const activeBg =
+                      item.key === "HOME"
+                        ? "bg-blue-500/10 border-blue-400"
+                        : item.key === "WORK"
+                        ? "bg-emerald-500/10 border-emerald-400"
+                        : "bg-purple-500/10 border-purple-400";
+
                     return (
                       <button
                         key={item.key}
@@ -358,10 +384,17 @@ export default function Profile() {
                         className={[
                           "h-11 rounded-xl border px-3 inline-flex items-center justify-center gap-2 text-sm font-semibold transition",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          active ? "border-primary bg-primary/10" : "border-border/70 bg-card/70 hover:bg-muted/60",
+                          active
+                            ? activeBg
+                            : "border-border/70 bg-card/70 hover:bg-muted/60",
                         ].join(" ")}
                       >
-                        <item.Icon className="h-4 w-4" />
+                        <item.Icon
+                          className={[
+                            "h-4 w-4",
+                            active ? color : "text-muted-foreground",
+                          ].join(" ")}
+                        />
                         {item.label}
                       </button>
                     );
