@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin, CircleDot } from "lucide-react";
+import { ArrowUpDown, Plus, ChevronUp, ChevronDown, Trash2, Home, Briefcase, MapPin, CircleDot, Clock } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 import ridesService from "../services/ridesService";
 import favouritesService from "../services/favouritesService";
@@ -108,6 +108,8 @@ export default function Compare() {
   const [favourites, setFavourites] = useState([]);
   const [selectedFavourite, setSelectedFavourite] = useState(null);
   const [favSheetOpen, setFavSheetOpen] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -335,7 +337,10 @@ export default function Compare() {
       const pickupFinal = stopsFinal[0];
       const dropoffFinal = stopsFinal[stopsFinal.length - 1];
 
-      const data = await ridesService.compareRoute(stopsFinal);
+      const data = await ridesService.compareRoute(stopsFinal, {
+        pickup_time: scheduledAt,
+      });
+
       const ridesArr = Array.isArray(data?.rides) ? data.rides : [];
 
       setSheetData({ rides: ridesArr, pickup: pickupFinal, dropoff: dropoffFinal });
@@ -493,6 +498,37 @@ export default function Compare() {
           </button>
         </div>
 
+        {/* Schedule for later */}
+        <div className="pt-2">
+          {!scheduledAt ? (
+            <button
+              type="button"
+              onClick={() => setScheduleOpen(true)}
+              className="w-full flex items-center gap-2 px-3 h-11 rounded-xl border border-border/70 bg-card/70 text-sm font-medium hover:bg-muted/80 transition"
+            >
+              <Clock className={`w-4 h-4 ${scheduledAt ? "text-primary" : "text-muted-foreground"}`} />
+              Schedule for later
+            </button>
+          ) : (
+            <div className="w-full flex items-center justify-between px-3 h-11 rounded-xl border border-border/70 bg-card/70 text-sm">
+              <span>
+                {new Date(scheduledAt).toLocaleString([], {
+                  weekday: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+
+              <button
+                onClick={() => setScheduledAt(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Saved Places */}
         {user && favourites.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2">
@@ -634,6 +670,38 @@ export default function Compare() {
           </p>
         ) : null}
       </div>
+
+      {scheduleOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setScheduleOpen(false)}
+            />
+
+            <div
+              className="relative z-10 w-[90%] max-w-sm rounded-2xl bg-card border border-border/60 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold mb-3">Schedule ride</h3>
+
+              <input
+                type="datetime-local"
+                className="w-full h-11 px-3 rounded-xl border border-border/70 bg-card"
+                onChange={(e) => setScheduledAt(new Date(e.target.value).toISOString())}
+              />
+
+              <button
+                onClick={() => setScheduleOpen(false)}
+                className="mt-4 w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold"
+              >
+                Confirm Schedule
+              </button>
+            </div>
+          </div>,
+          document.body
+        )
+      }
 
       <BottomSheet
         open={sheetOpen}

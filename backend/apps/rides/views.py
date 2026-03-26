@@ -114,6 +114,9 @@ class RideCompareView(APIView):
         serializer.is_valid(raise_exception=True)
 
         stops = serializer.validated_data["stops"]
+        pickup_time = serializer.validated_data.get("pickup_time")
+        if pickup_time:
+            print(f"Scheduled ride for: {pickup_time}")
 
         pickup = stops[0]
         dropoff = stops[-1]
@@ -182,6 +185,7 @@ class RideCompareView(APIView):
                 dropoff_lng=dropoff["lng"],
                 stops=stops,
                 results=rides,
+                pickup_time=pickup_time,
             )
 
         return Response(response_data, status=status.HTTP_200_OK)

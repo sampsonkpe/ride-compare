@@ -71,10 +71,14 @@ const ridesService = {
   },
 
   // New multi-stop compare (stops[])
-  compareRoute: async (stops) => {
+  compareRoute: async (stops, extra = {}) => {
     const payloadStops = normaliseStops(stops);
 
-    const response = await api.post("/rides/compare/", { stops: payloadStops });
+    const response = await api.post("/rides/compare/", {
+      stops: payloadStops,
+      ...extra,
+    });
+
     return response.data;
   },
 

@@ -26,6 +26,7 @@ class RideCompareRequestSerializer(serializers.Serializer):
     pickup = LocationSerializer(required=False)
     dropoff = LocationSerializer(required=False)
     stops = StopSerializer(many=True, required=False)
+    pickup_time = serializers.DateTimeField(required=False)
 
     def validate(self, attrs):
         stops = attrs.get("stops")
@@ -62,6 +63,14 @@ class RideCompareRequestSerializer(serializers.Serializer):
         for i, s in enumerate(middle, start=1):
             if s.get("kind") != "STOP":
                 raise serializers.ValidationError(f"Stop at index {i} must be kind=STOP.")
+
+        pickup_time = attrs.get("pickup_time")
+
+        if pickup_time:
+            from django.utils import timezone
+
+            if pickup_time < timezone.now():
+                raise serializers.ValidationError("pickup_time cannot be in the past.")
 
         return attrs
 
@@ -100,5 +109,6 @@ class SearchHistorySerializer(serializers.ModelSerializer):
             "stops",
             "results",
             "created_at",
+            "pickup_time",
         )
         read_only_fields = ("id", "created_at")

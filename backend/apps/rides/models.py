@@ -19,6 +19,8 @@ class SearchHistory(models.Model):
     dropoff_lat = models.FloatField()
     dropoff_lng = models.FloatField()
 
+    pickup_time = models.DateTimeField(null=True, blank=True)
+
     # Full multi-stop route (Pickup + Stops + Dropoff)
     stops = models.JSONField(null=True, blank=True)
 
