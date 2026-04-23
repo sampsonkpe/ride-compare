@@ -366,8 +366,12 @@ export default function Compare() {
       const pickupFinal = stopsFinal[0];
       const dropoffFinal = stopsFinal[stopsFinal.length - 1];
 
+      const nowWithBuffer = new Date(Date.now() + 2 * 60 * 1000); // +2 mins
+
       const data = await ridesService.compareRoute(stopsFinal, {
-        pickup_time: scheduledAt,
+        pickup_time: scheduledAt
+          ? new Date(scheduledAt).toISOString()
+          : nowWithBuffer.toISOString(),
       });
 
       const ridesArr = Array.isArray(data?.rides) ? data.rides : [];
