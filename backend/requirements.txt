@@ -27,3 +27,4 @@ pycodestyle==2.14.0
 pyflakes==3.4.0
 pytokens==0.3.0
 sqlparse==0.5.5
+gunicorn==25.3.0
