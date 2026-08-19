@@ -9,6 +9,8 @@ build/
 venv/
 env/
 .env
+backend/.env
+backend/.venv/
 
 # Django
 *.log
@@ -22,6 +24,8 @@ node_modules/
 out/
 build/
 dist/
+frontend/.env
+frontend/.venv/
 
 # IDE
 .vscode/

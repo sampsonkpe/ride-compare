@@ -1,0 +1,56 @@
+.
+├── eslint.config.js
+├── frontend_tree.txt
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── public
+│   ├── favicon.png
+│   └── preview.png
+├── README.md
+├── src
+│   ├── App.jsx
+│   ├── assets
+│   │   ├── boltlogo.png
+│   │   ├── ridecomparelogo.png
+│   │   ├── uberlogo.png
+│   │   └── yangologo.png
+│   ├── components
+│   │   ├── auth
+│   │   │   └── RequireAuth.jsx
+│   │   ├── ErrorBoundary.jsx
+│   │   ├── layout
+│   │   │   ├── AppShell.jsx
+│   │   │   └── TopBar.jsx
+│   │   ├── overlays
+│   │   │   └── BottomSheet.jsx
+│   │   ├── rides
+│   │   │   └── LocationInput.jsx
+│   │   └── ThemeToggle.jsx
+│   ├── context
+│   │   ├── AuthContext.jsx
+│   │   └── ThemeContext.jsx
+│   ├── index.css
+│   ├── main.jsx
+│   ├── pages
+│   │   ├── Auth.jsx
+│   │   ├── Compare.jsx
+│   │   ├── CompareResults.jsx
+│   │   ├── NotFound.jsx
+│   │   ├── Profile.jsx
+│   │   └── Splash.jsx
+│   ├── routes
+│   │   └── access.js
+│   ├── services
+│   │   ├── api.js
+│   │   ├── authService.js
+│   │   ├── favouritesService.js
+│   │   └── ridesService.js
+│   └── utils
+│       └── helpers.js
+├── tailwind.config.js
+├── vercel.json
+└── vite.config.js
+
+14 directories, 40 files
